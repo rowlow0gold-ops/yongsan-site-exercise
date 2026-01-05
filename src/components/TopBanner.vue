@@ -1,11 +1,13 @@
 <template>
   <v-app-bar height="36" flat location="top" class="top">
-    <div class="top-content">
-      <v-img :src="flagUrl" width="22" height="14" class="flag" contain />
-      <span class="top-text">
-        이 누리집은 대한민국 비공식 전자정부 누리집입니다.
-      </span>
-    </div>
+    <v-container class="nav-inner d-flex align-center flex-nowrap py-0">
+      <div class="top-content">
+        <v-img :src="flagUrl" width="22" height="14" class="flag" contain />
+        <span class="top-text">
+          이 누리집은 대한민국 비공식 전자정부 누리집입니다.
+        </span>
+      </div>
+    </v-container>
   </v-app-bar>
 </template>
 
@@ -19,11 +21,15 @@ import flagUrl from "../assets/top_ban_ico_flag.svg";
   border-bottom: 1px solid #ddd;
 }
 
+.nav-inner {
+  max-width: 1440px; /* adjust to match the site (1280~1440 common) */
+  margin: 0 auto; /* centers the whole header content */
+  padding: 0 16px; /* mobile inset */
+}
+
 .top-content {
   display: flex;
   align-items: center;
-  height: 100%;
-  padding-left: clamp(2px, 10vw, 10%);
 }
 
 .top-text {
