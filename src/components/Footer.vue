@@ -248,7 +248,6 @@ import wa from "../assets/logo_wa.png";
 }
 .notice-row {
   display: flex;
-  align-items: ;
   gap: 14px;
   flex-wrap: nowrap; /* ✅ 줄바꿈 방지 */
 }

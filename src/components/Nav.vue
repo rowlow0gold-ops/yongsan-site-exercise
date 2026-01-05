@@ -1,14 +1,15 @@
 <template>
   <v-app-bar flat height="64" color="white" class="nav">
-    <v-container fluid class="d-flex align-center flex-nowrap py-0 px-0">
+    <v-container class="nav-inner d-flex align-center flex-nowrap py-0">
       <!-- LEFT: Logo (absolute priority, never shrinks) -->
-      <v-img
-        :src="logoUrl"
-        height="40"
-        contain
-        class="mr-4 flex-shrink-0 logo"
-      />
-
+      <v-btn
+        variant="text"
+        class="mr-4 flex-shrink-0 logo-btn"
+        :ripple="false"
+        @click="goHome"
+      >
+        <v-img :src="logoUrl" height="52" contain class="logo" />
+      </v-btn>
       <v-spacer />
 
       <!-- RIGHT: Big search box (hide first on small screens) -->
@@ -69,9 +70,18 @@ import logoUrl from "../assets/bi-new.jpg";
 }
 
 .logo {
-  max-height: 56px;
-  min-width: 56px;
-  width: 56px;
+  max-height: 52px;
+  width: auto;
+  min-width: 104px;
+}
+
+.logo-btn {
+  padding: 0 !important;
+  min-width: unset !important;
+  height: auto !important;
+  line-height: normal !important;
+  display: flex;
+  align-items: center;
 }
 
 .square-btn {
@@ -80,5 +90,17 @@ import logoUrl from "../assets/bi-new.jpg";
   min-width: 48px !important;
   min-height: 48px !important;
   padding: 0 !important;
+}
+
+.nav-inner {
+  max-width: 1440px; /* adjust to match the site (1280~1440 common) */
+  margin: 0 auto; /* centers the whole header content */
+  padding: 0 16px; /* mobile inset */
+}
+
+@media (min-width: 960px) {
+  .nav-inner {
+    padding: 0 40px; /* desktop inset like screenshot #1 */
+  }
 }
 </style>
