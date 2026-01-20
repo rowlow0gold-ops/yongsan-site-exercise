@@ -127,7 +127,7 @@
             contain
             alt="용산 로고"
           />
-          <div class="notice-text">이 누리집은 용산구청 누리집입니다.</div>
+          <div class="notice-text">이 누리집은 용산구청 누리집이 아닙니다.</div>
         </div>
       </v-container>
     </v-container>

@@ -1,11 +1,10 @@
 <template>
   <v-app>
-    <v-container>
-      <top-banner />
-    </v-container>
-
     <v-main>
-      <Nav></Nav>
+      <div v-show="!isSticky">
+        <top-banner />
+        <Nav />
+      </div>
       <v-container fluid class="px-6 px-lg-12">
         <v-row class="gy-6 gx-6">
           <v-col cols="13" md="6">

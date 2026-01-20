@@ -128,13 +128,22 @@ const leaderLinks = {
 
 /* Text */
 .leader-text {
-  position: relative;
+  position: absolute;
+  left: 6%;
+  top: 50%;
+  transform: translateY(-50%);
   z-index: 1;
-  padding-right: 160px; /* reserve space on desktop */
+
+  max-width: 40%;
+
+  transform: translateY(-50%) scale(1.15);
+  transform-origin: left center;
 }
 @media (max-width: 600px) {
   .leader-text {
-    padding-right: 16px; /* allow overlap on small screens */
+    left: 16px;
+    max-width: 60%;
+    top: 55%;
   }
 }
 
@@ -170,9 +179,9 @@ const leaderLinks = {
 /* Leader image */
 .leader-img {
   position: absolute;
-  right: 1vw;
+  right: 3vw;
   bottom: 0;
-  width: 260px;
+  width: 320px;
   max-width: 52%;
   height: auto;
   max-height: 100%;
