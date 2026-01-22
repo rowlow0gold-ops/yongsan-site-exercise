@@ -5,13 +5,19 @@
     scrim="rgba(0,0,0,0.35)"
     :z-index="3000"
     content-class="menu-popup-content"
-    @click:outside="$emit('update:modelValue', false)"
+    @click="$emit('update:modelValue', false)"
+    :transition="false"
   >
-    <v-card class="desktop-menu-card">
+    <v-card class="desktop-menu-card" @click.stop>
       <div class="desktop-menu-header">
         <div class="title">전체메뉴</div>
         <v-spacer />
-        <v-btn icon variant="text" @click="$emit('update:modelValue', false)">
+        <v-btn
+          icon
+          variant="text"
+          :ripple="false"
+          @click="$emit('update:modelValue', false)"
+        >
           <v-icon icon="mdi-close" />
         </v-btn>
       </div>
@@ -37,7 +43,73 @@ defineEmits(["update:modelValue"]);
   position: fixed;
   inset: 0;
   display: block !important;
-  pointer-events: none; /* allow scrim click outside */
+}
+
+.menu-popup-content,
+.menu-popup-content * {
+  transition: none !important;
+  animation: none !important;
+}
+
+/* Remove blur on scrim (if any) */
+.menu-popup-content .v-overlay__scrim {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  transition: none !important;
+}
+
+/* Kill Vuetify “pressed/hover” color overlay on buttons */
+.menu-popup-content .v-btn__overlay,
+.menu-popup-content .v-btn__underlay {
+  opacity: 0 !important;
+  transition: none !important;
+}
+
+/* Kill ripple visuals completely */
+.menu-popup-content .v-ripple__container {
+  display: none !important;
+}
+
+/* Optional: remove any remaining transition on interactive items */
+.menu-popup-content .v-btn,
+.menu-popup-content .v-list-item {
+  transition: none !important;
+}
+
+/* =========================
+   Disable hover effects
+   inside popup menu
+   ========================= */
+
+/* Buttons */
+.menu-popup-content .v-btn:hover,
+.menu-popup-content .v-btn:focus,
+.menu-popup-content .v-btn:active {
+  background-color: transparent !important;
+}
+
+/* Remove Vuetify hover overlays */
+.menu-popup-content .v-btn__overlay,
+.menu-popup-content .v-btn__underlay,
+.menu-popup-content .v-list-item__overlay,
+.menu-popup-content .v-list-item__underlay,
+.menu-popup-content .v-card__overlay {
+  opacity: 0 !important;
+}
+
+/* List items (menus, navigation, etc.) */
+.menu-popup-content .v-list-item:hover {
+  background-color: transparent !important;
+}
+
+/* Card hover (important) */
+.menu-popup-content .v-card:hover {
+  background-color: #fff !important;
+}
+
+/* Kill transitions so it feels instant */
+.menu-popup-content * {
+  transition: none !important;
 }
 
 /* Card must accept pointer events */

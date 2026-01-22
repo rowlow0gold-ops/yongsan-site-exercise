@@ -1,6 +1,6 @@
 <script setup>
-import leaderBg from "../assets/leader_bg.png";
-import leaderImg from "../assets/leader_b.png";
+import leaderBg from "@/assets/leader_bg.png";
+import leaderImg from "@/assets/leader_b.png";
 import { useDisplay } from "vuetify";
 
 const { smAndUp } = useDisplay();
@@ -123,7 +123,9 @@ const leaderLinks = {
   /* keep background settings (overridden by inline backgroundImage, but these are safe defaults) */
   background-repeat: no-repeat, no-repeat;
   background-size: contain, cover;
-  background-position: left center, center;
+  background-position:
+    left center,
+    center;
 }
 
 /* Text */

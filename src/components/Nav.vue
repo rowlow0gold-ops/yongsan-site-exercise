@@ -1,45 +1,8 @@
+<!-- src/components/Nav.vue -->
 <template>
-  <!-- TOP utility bar (desktop only) -->
-  <v-sheet class="util-bar d-none d-md-flex" height="44">
+  <!-- MAIN header (single header only) -->
+  <v-sheet class="main-header" :class="{ sticky: isSticky }" color="white">
     <v-container class="bar-inner d-flex align-center flex-nowrap py-0">
-      <!-- Left quick links -->
-      <div class="util-links">
-        <a href="#">용산구청</a>
-        <span class="sep">|</span>
-        <a href="#">보건소</a>
-        <span class="sep">|</span>
-        <a href="#">열린구청장실</a>
-        <span class="sep">|</span>
-        <a href="#">부서·동</a>
-        <span class="sep">|</span>
-        <a href="#">교육포털</a>
-        <span class="sep">|</span>
-        <a href="#">자치회관</a>
-        <span class="sep">|</span>
-        <a href="#">구의회</a>
-      </div>
-
-      <v-spacer />
-
-      <!-- Right actions -->
-      <div class="util-actions">
-        <v-btn variant="text" class="util-btn" prepend-icon="mdi-account">
-          로그인
-        </v-btn>
-        <v-btn variant="text" class="util-btn" prepend-icon="mdi-account-plus">
-          회원가입
-        </v-btn>
-        <v-btn variant="text" class="util-btn" prepend-icon="mdi-earth">
-          Language
-        </v-btn>
-      </div>
-    </v-container>
-  </v-sheet>
-  <v-sheet :class="['main-header', { sticky: isSticky }]" color="white">
-    <v-container
-      class="bar-inner d-flex align-center flex-nowrap py-0"
-      style="height: 84px"
-    >
       <!-- LEFT: logo -->
       <v-btn
         variant="text"
@@ -52,7 +15,7 @@
 
       <v-spacer />
 
-      <!-- ✅ Desktop nav: show ONLY on lg and up -->
+      <!-- Desktop nav -->
       <DesktopMenus />
 
       <v-spacer />
@@ -68,18 +31,15 @@
         </div>
       </div>
 
-      <!-- RIGHT: buttons (always visible) -->
+      <!-- RIGHT: buttons -->
       <v-btn variant="flat" color="#de3a75" rounded="0" class="square-btn">
         <v-icon icon="mdi-magnify" />
         <div class="btn-label d-none d-lg-block">통합검색</div>
       </v-btn>
 
-      <!-- ✅ All Menu button:
-           - on md and down: opens fullscreen dialog
-           - on lg and up: you can still keep it (like the real site) -->
       <v-btn
         variant="flat"
-        color="#711298"
+        :color="isDesktopMenuOpen ? '#4b0c70' : '#711298'"
         rounded="0"
         class="square-btn"
         @click="toggleAllMenu"
@@ -89,66 +49,10 @@
       </v-btn>
     </v-container>
   </v-sheet>
-  <!-- MAIN header -->
-  <Teleport to="body">
-    <v-sheet v-show="isSticky" class="main-bar-sticky" color="white">
-      <v-container class="bar-inner d-flex align-center flex-nowrap py-0">
-        <!-- LEFT: logo -->
-        <v-btn
-          variant="text"
-          class="mr-6 flex-shrink-0 logo-btn"
-          :ripple="false"
-          @click="goHome"
-        >
-          <v-img :src="logoUrl" height="52" contain class="logo" />
-        </v-btn>
 
-        <v-spacer />
-
-        <!-- ✅ Desktop nav: show ONLY on lg and up -->
-        <DesktopMenus />
-
-        <v-spacer />
-
-        <!-- RIGHT: weather/info (desktop only) -->
-        <div class="right-info d-none d-lg-flex">
-          <div class="weather">
-            <div class="temp">☀ -5℃ <b class="temp_inner">맑음</b></div>
-            <div class="dust">
-              미세먼지 <b class="good">(보통)</b> · 초미세먼지
-              <b class="good">(보통)</b>
-            </div>
-          </div>
-        </div>
-
-        <!-- RIGHT: buttons (always visible) -->
-        <v-btn variant="flat" color="#de3a75" rounded="0" class="square-btn">
-          <v-icon icon="mdi-magnify" />
-          <div class="btn-label d-none d-lg-block">통합검색</div>
-        </v-btn>
-
-        <!-- ✅ All Menu button:
-           - on md and down: opens fullscreen dialog
-           - on lg and up: you can still keep it (like the real site) -->
-        <v-btn
-          variant="flat"
-          :color="isDesktopMenuOpen ? '#4b0c70' : '#711298'"
-          rounded="0"
-          class="square-btn"
-          @click="toggleAllMenu"
-        >
-          <v-icon icon="mdi-menu" />
-          <div class="btn-label d-none d-lg-block">전체메뉴</div>
-        </v-btn>
-      </v-container>
-    </v-sheet>
-  </Teleport>
-
-  <!-- ✅ Fullscreen All Menu (md and down behavior) -->
   <!-- ✅ Mobile All Menu (md and down) -->
   <v-dialog v-model="isDesktopMenuOpen" fullscreen class="d-lg-none">
     <v-card>
-      <!-- ✅ TOP ICON ROW (mobile) -->
       <div class="allmenu-top-icons d-flex align-center">
         <v-btn icon variant="text" class="allmenu-icon-btn">
           <v-icon icon="mdi-account" />
@@ -164,12 +68,7 @@
 
         <v-spacer />
 
-        <v-btn
-          icon
-          variant="text"
-          class="allmenu-close"
-          @click="isDesktopMenuOpen = !isDesktopMenuOpen"
-        >
+        <v-btn icon variant="text" class="allmenu-close" @click="toggleAllMenu">
           <v-icon icon="mdi-close" />
         </v-btn>
       </div>
@@ -196,7 +95,7 @@
     </v-card>
   </v-dialog>
 
-  <!-- Desktop popup (lg and up) -->
+  <!-- ✅ Desktop popup (lg and up) -->
   <MenuPopup
     v-if="isDesktopMenuOpen"
     v-model="isDesktopMenuOpen"
@@ -221,29 +120,17 @@
 import { ref } from "vue";
 import logoUrl from "../assets/bi-new.jpg";
 import DesktopMenus from "./DesktopMenus.vue";
-import { onMounted, onBeforeUnmount } from "vue";
 import MenuPopup from "./MenuPopup.vue";
+
+defineProps({
+  isSticky: { type: Boolean, default: false },
+});
 
 const isDesktopMenuOpen = ref(false);
 
 const toggleAllMenu = () => {
-  isDesktopMenuOpen.value = isDesktopMenuOpen.value = true;
+  isDesktopMenuOpen.value = !isDesktopMenuOpen.value;
 };
-
-const isSticky = ref(false);
-
-const onScroll = () => {
-  isSticky.value = window.scrollY > 36 + 44; // TopBanner(36) + util bar(44)
-};
-
-onMounted(() => {
-  window.addEventListener("scroll", onScroll, { passive: true });
-  onScroll();
-});
-
-onBeforeUnmount(() => {
-  window.removeEventListener("scroll", onScroll);
-});
 
 const goHome = () => {
   // router.push('/') etc
@@ -349,58 +236,14 @@ const MOBILE_MENU = [
 </script>
 
 <style scoped>
-.hidden {
-  display: none !important;
-  height: 0 !important;
-  margin: 0 !important;
-  padding: 0 !important;
-}
-
 /* shared container width + padding */
-
-.main-bar-sheet {
-  height: 84px; /* same as v-app-bar height */
-  display: flex;
-  align-items: center; /* vertical centering */
-  background: #fff;
-  position: relative;
-  z-index: 10;
-}
-
-/* restore the shadow line you had on main-bar */
-.main-bar-sheet::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  bottom: -1px;
-  width: 100%;
-  height: 8px;
-  pointer-events: none;
-  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.15), rgba(0, 0, 0, 0));
-}
-
-.main-bar-sticky {
-  position: fixed;
-  top: 0; /* if you have a top banner, set top: 36px */
-  left: 0;
-  right: 0;
-  height: 66px;
-  display: flex;
-  align-items: center;
-  z-index: 2000;
-  box-shadow: 0 6px 10px rgba(0, 0, 0, 0.08);
-}
-
-.nav-wrap.sticky {
-  position: sticky;
-  top: 0;
-  z-index: 1000;
-}
-
 .bar-inner {
   max-width: 1440px;
   margin: 0 auto;
   padding: 0 16px;
+  height: 84px; /* normal height */
+  align-items: stretch; /* allow buttons to fill row */
+  transition: height 0.2s ease;
 }
 @media (min-width: 960px) {
   .bar-inner {
@@ -408,52 +251,29 @@ const MOBILE_MENU = [
   }
 }
 
-/* utility bar */
-.util-bar {
-  color: #fff;
-  background-color: #2f5597 !important;
-}
-.util-links a,
-.util-actions .util-btn {
-  color: #fff;
-  text-decoration: none;
-  font-size: 14px;
-  font-weight: 600;
-}
-.util-links {
+.main-header {
+  height: 84px;
   display: flex;
-  gap: 10px;
   align-items: center;
-  white-space: nowrap;
-}
-.sep {
-  opacity: 0.6;
-}
-.util-actions {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  padding: 0px 14px;
-  border-radius: 999px;
+  position: sticky;
+  top: 0;
+  z-index: 2000;
   background: #fff;
-}
-.util-btn {
-  text-transform: none;
-  font-weight: 800;
-  font-size: 18px;
-  letter-spacing: -0.2px;
-  color: #111 !important;
-  min-width: auto !important;
-  padding: 0 8px !important;
+  overflow: hidden;
 }
 
-/* main bar shadow gradient (your original) */
-.main-bar {
-  position: relative;
-  z-index: 10;
+.main-header.sticky :deep(.bar-inner) {
+  height: 66px; /* sticky height */
 }
 
-.main-bar::after {
+/* ✅ content area is shorter than header to leave room for shadow */
+.main-header :deep(.bar-inner) {
+  height: calc(100% - var(--shadow-gap));
+  align-items: center;
+}
+
+/* normal (non-sticky): soft gradient */
+.main-header::after {
   content: "";
   position: absolute;
   left: 0;
@@ -462,6 +282,12 @@ const MOBILE_MENU = [
   height: 8px;
   pointer-events: none;
   background: linear-gradient(to bottom, rgba(0, 0, 0, 0.15), rgba(0, 0, 0, 0));
+}
+
+.main-header.sticky::after {
+  height: 0;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.6);
+  background: none;
 }
 
 /* logo */
@@ -477,17 +303,6 @@ const MOBILE_MENU = [
   line-height: normal !important;
   display: flex;
   align-items: center;
-}
-
-.nav-link {
-  text-decoration: none;
-  color: #111;
-  font-size: 20px;
-  font-weight: 700;
-  white-space: nowrap;
-}
-.nav-link:hover {
-  opacity: 0.75;
 }
 
 /* right weather */
@@ -518,21 +333,27 @@ const MOBILE_MENU = [
   font-weight: 800;
 }
 
-/* square buttons */
+/* square buttons (fill header box) */
 .square-btn {
   width: 66px;
-  height: 66px;
   min-width: 66px !important;
+  height: 66px !important;
   min-height: 66px !important;
   padding: 0 !important;
+  border-radius: 0 !important;
+  align-self: stretch;
 }
+
 .square-btn :deep(.v-btn__content) {
+  height: 100%;
+  width: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 4px;
 }
+
 .btn-label {
   font-size: 12px;
   font-weight: 800;
@@ -540,42 +361,8 @@ const MOBILE_MENU = [
   margin-top: 2px;
   text-align: center;
 }
-@media (max-width: 1279px) {
-  .square-btn {
-    width: 48px;
-    height: 48px;
-    min-width: 48px !important;
-    min-height: 48px !important;
-  }
-  .btn-label {
-    display: none;
-  }
-}
 
-.main-header {
-  position: relative; /* normal flow */
-  z-index: 10;
-}
-
-.main-header.sticky {
-  position: sticky;
-  top: 0;
-  z-index: 1000;
-}
-
-/* keep your shadow line */
-.main-header::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  bottom: -1px;
-  width: 100%;
-  height: 8px;
-  pointer-events: none;
-  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.15), rgba(0, 0, 0, 0));
-}
-
-/* ===== All Menu (mobile top icon row) ===== */
+/* mobile icon row */
 .allmenu-top-icons {
   height: 64px;
   padding: 0 16px;
@@ -593,16 +380,7 @@ const MOBILE_MENU = [
   color: #111;
 }
 
-/* ===== Desktop drawer header ===== */
-.drawer-header {
-  height: 64px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.12);
-}
-
-/* ===== Desktop popup menu ===== */
-/* ✅ Teleport content needs :deep() */
-
-/* (optional) make overlay always above sticky header */
+/* overlay above sticky header */
 :global(.v-overlay) {
   z-index: 3000 !important;
 }

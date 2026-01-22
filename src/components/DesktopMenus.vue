@@ -6,11 +6,13 @@
       @mouseleave="closeWithDelay()"
       @mouseenter="cancelClose()"
     >
+      <!-- TOP MENU: hover only (NOT clickable) -->
       <button
         v-for="(m, i) in MENU"
         :key="m.label"
         class="nav-btn"
         @mouseenter="open(i)"
+        type="button"
       >
         {{ m.label }}
       </button>
@@ -40,12 +42,28 @@
 
             <div class="mega-cols">
               <div v-for="c in active.children" :key="c.label" class="col">
-                <div class="col-head">{{ c.label }}</div>
+                <!-- 2nd level: clickable only if it has `to` -->
+                <button
+                  class="col-head col-head-btn"
+                  type="button"
+                  :disabled="!c.to"
+                  @click="onMenuClick(c)"
+                >
+                  {{ c.label }}
+                </button>
 
+                <!-- 3rd level: clickable items -->
                 <div v-if="c.children?.length" class="col-list">
-                  <div v-for="x in c.children" :key="x.label" class="col-item">
+                  <button
+                    v-for="x in c.children"
+                    :key="x.label"
+                    class="col-item col-item-btn"
+                    type="button"
+                    :disabled="!x.to"
+                    @click="onMenuClick(x)"
+                  >
                     • {{ x.label }}
-                  </div>
+                  </button>
                 </div>
               </div>
             </div>
@@ -66,7 +84,6 @@ const MENU = [
     children: [
       {
         label: "종합민원안내",
-        children: [{ label: "민원안내" }, { label: "무인민원발급기" }],
       },
       { label: "종합민원신고상담" },
       { label: "부패공익신고" },
@@ -77,7 +94,13 @@ const MENU = [
     label: "참여소통",
     desc: "구민 참여와 소통",
     children: [
-      { label: "구민의견/참여" },
+      {
+        label: "구민의견/참여",
+        children: [
+          { id: "loc", label: "칭찬합시다", to: "/civil/kiosk/locations" },
+          { id: "how", label: "나도한마디", to: "/civil/kiosk/how" },
+        ],
+      },
       { label: "적극행정" },
       { label: "주민참여예산제" },
     ],
@@ -117,7 +140,7 @@ const menuOpen = ref(false);
 const activeIndex = ref(-1);
 
 const active = computed(() =>
-  activeIndex.value >= 0 ? MENU[activeIndex.value] : null
+  activeIndex.value >= 0 ? MENU[activeIndex.value] : null,
 );
 
 let closeTimer = null;
@@ -126,6 +149,15 @@ function open(i) {
   activeIndex.value = i;
   menuOpen.value = true;
   cancelClose();
+}
+
+function onMenuClick(item) {
+  // Navigate ONLY if `to` exists
+  if (item?.to) {
+    // close after navigation (optional)
+    menuOpen.value = false;
+    activeIndex.value = -1;
+  }
 }
 
 function cancelClose() {
@@ -198,6 +230,7 @@ function closeWithDelay() {
   align-content: start;
 }
 
+/* column head */
 .col-head {
   background: #fdecef;
   padding: 10px 12px;
@@ -207,6 +240,38 @@ function closeWithDelay() {
   margin-bottom: 10px;
 }
 
+/* make heads/items clickable but keep existing look */
+.col-head-btn,
+.col-item-btn {
+  border: 0;
+  width: 100%;
+  cursor: pointer;
+}
+
+.col-head-btn:disabled,
+.col-item-btn:disabled {
+  cursor: default;
+  opacity: 1; /* keep design consistent */
+}
+
+/* 3rd-level hover effect */
+.col-item-btn {
+  background: none;
+  text-align: left;
+  font-size: 16px;
+  opacity: 0.9;
+  padding: 2px 0;
+  transition:
+    font-weight 0.15s ease,
+    text-decoration 0.15s ease;
+}
+
+.col-item-btn:hover:not(:disabled) {
+  font-weight: 800;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
 .col-list {
   display: grid;
   gap: 10px;
@@ -214,6 +279,8 @@ function closeWithDelay() {
 }
 
 .col-item {
+  background: none;
+  text-align: left;
   font-size: 16px;
   opacity: 0.9;
 }
