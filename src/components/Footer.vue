@@ -47,12 +47,12 @@
       <!-- LINKS -->
       <v-container class="links-wrap" fluid>
         <div class="links">
-          <a href="#" class="link accent">개인정보처리방침</a>
-          <a href="#" class="link">영상정보처리기기 운영 · 관리 방침</a>
-          <a href="#" class="link">저작권정책</a>
-          <a href="#" class="link">맞춤형 구독정보(RSS)</a>
-          <a href="#" class="link">전자우편 수집거부</a>
-          <a href="#" class="link">찾아오시는길</a>
+          <a href="" class="link accent">개인정보처리방침</a>
+          <a href="" class="link">영상정보처리기기 운영 · 관리 방침</a>
+          <a href="" class="link">저작권정책</a>
+          <a href="" class="link">맞춤형 구독정보(RSS)</a>
+          <a href="" class="link">전자우편 수집거부</a>
+          <a href="" class="link">찾아오시는길</a>
         </div>
       </v-container>
 

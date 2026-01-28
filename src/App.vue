@@ -1,6 +1,6 @@
 <template>
-  <v-app>
-    <v-main>
+  <v-app class="app-root">
+    <v-main class="app-main">
       <TopBanner />
       <UtilBar />
 
@@ -11,6 +11,7 @@
 
       <router-view />
     </v-main>
+    <Footer />
 
     <v-fab
       class="go-top-fab"
@@ -19,8 +20,6 @@
       size="large"
       @click="scrollToTop"
     />
-
-    <Footer />
   </v-app>
 </template>
 
@@ -92,5 +91,15 @@ onBeforeUnmount(() => {
   right: 20px !important;
   bottom: 20px !important;
   z-index: 9999 !important;
+}
+
+.app-root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-main {
+  flex: 1;
 }
 </style>
