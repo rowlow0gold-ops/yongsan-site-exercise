@@ -71,7 +71,9 @@ const items = [
   position: absolute;
   inset: 0;
   background-image: var(--bg-image);
-  background-position: left center, center;
+  background-position:
+    left center,
+    center;
   background-size: contain, cover;
   background-repeat: no-repeat, no-repeat;
   z-index: 0;

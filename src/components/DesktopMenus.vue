@@ -1,38 +1,39 @@
 <template>
   <header v-if="$vuetify.display.mdAndUp" class="header">
-    <nav
-      ref="navRef"
-      class="main-nav"
-      @mouseleave="closeWithDelay()"
+    <div
+      ref="hoverZoneRef"
+      class="nav-zone"
       @mouseenter="cancelClose()"
+      @mouseleave="closeWithDelay()"
     >
-      <!-- TOP MENU: hover only (NOT clickable) -->
-      <button
-        v-for="(m, i) in MENU"
-        :key="m.label"
-        class="nav-btn"
-        @mouseenter="open(i)"
-        type="button"
-      >
-        {{ m.label }}
-      </button>
+      <nav ref="navRef" class="main-nav">
+        <button
+          v-for="(m, i) in MENU"
+          :key="m.label"
+          class="nav-btn"
+          @mouseenter="open(i)"
+          type="button"
+        >
+          {{ m.label }}
+        </button>
+      </nav>
 
-      <!-- ONE menu only -->
       <v-menu
         v-model="menuOpen"
         :target="navRef"
         location="bottom center"
         origin="top center"
-        :offset="8"
+        :offset="2"
         :close-on-content-click="false"
         attach="body"
+        :transition="false"
       >
         <v-card
           class="mega"
           elevation="8"
           rounded="lg"
           @mouseenter="cancelClose()"
-          @mouseleave="closeWithDelay()"
+          @mouseleave="closeImmediately"
         >
           <div class="mega-inner" v-if="active">
             <div class="mega-left">
@@ -59,7 +60,6 @@
                     :key="x.label"
                     class="col-item col-item-btn"
                     type="button"
-                    :disabled="!x.to"
                     @click="onMenuClick(x)"
                   >
                     • {{ x.label }}
@@ -67,24 +67,26 @@
                 </div>
               </div>
             </div>
-          </div>
-        </v-card>
+          </div> </v-card
+        >W
       </v-menu>
-    </nav>
+    </div>
   </header>
 </template>
 
 <script setup>
 import { ref, computed } from "vue";
+import { useRouter, useRoute } from "vue-router"; // ✅ ADD
+
+const router = useRouter(); // ✅ ADD
+const route = useRoute(); // ✅ OPTIONAL (for "already on same page" check)
 
 const MENU = [
   {
     label: "종합민원",
     desc: "신속하고 편리한 민원처리",
     children: [
-      {
-        label: "종합민원안내",
-      },
+      { label: "종합민원안내" },
       { label: "종합민원신고상담" },
       { label: "부패공익신고" },
       { label: "용산구 옴부즈만" },
@@ -97,8 +99,8 @@ const MENU = [
       {
         label: "구민의견/참여",
         children: [
-          { id: "loc", label: "칭찬합시다", to: "/civil/kiosk/locations" },
-          { id: "how", label: "나도한마디", to: "/civil/kiosk/how" },
+          { id: "loc", label: "칭찬합시다", to: "/board1" },
+          { id: "how", label: "나도한마디", to: "/board2" },
         ],
       },
       { label: "적극행정" },
@@ -151,10 +153,15 @@ function open(i) {
   cancelClose();
 }
 
-function onMenuClick(item) {
-  // Navigate ONLY if `to` exists
+async function onMenuClick(item) {
+  // ✅ Navigate ONLY if `to` exists
   if (item?.to) {
-    // close after navigation (optional)
+    // OPTIONAL: avoid navigating to the same path again
+    if (route.path !== item.to) {
+      await router.push(item.to); // ✅ THIS IS THE MAIN CHANGE
+    }
+
+    // close after navigation
     menuOpen.value = false;
     activeIndex.value = -1;
   }
@@ -167,12 +174,18 @@ function cancelClose() {
   }
 }
 
+function closeImmediately() {
+  cancelClose();
+  menuOpen.value = false;
+  activeIndex.value = -1;
+}
+
 function closeWithDelay() {
   cancelClose();
   closeTimer = setTimeout(() => {
     menuOpen.value = false;
     activeIndex.value = -1;
-  }, 120);
+  }, 240);
 }
 </script>
 

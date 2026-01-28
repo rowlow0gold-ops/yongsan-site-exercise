@@ -4,15 +4,9 @@
   <v-sheet class="main-header" :class="{ sticky: isSticky }" color="white">
     <v-container class="bar-inner d-flex align-center flex-nowrap py-0">
       <!-- LEFT: logo -->
-      <v-btn
-        variant="text"
-        class="mr-6 flex-shrink-0 logo-btn"
-        :ripple="false"
-        @click="goHome"
-      >
+      <div class="logo-btn" @click="goHome" role="button" tabindex="0">
         <v-img :src="logoUrl" height="52" contain class="logo" />
-      </v-btn>
-
+      </div>
       <v-spacer />
 
       <!-- Desktop nav -->
@@ -121,6 +115,10 @@ import { ref } from "vue";
 import logoUrl from "../assets/bi-new.jpg";
 import DesktopMenus from "./DesktopMenus.vue";
 import MenuPopup from "./MenuPopup.vue";
+import { useRouter, useRoute } from "vue-router";
+
+const router = useRouter();
+const route = useRoute();
 
 defineProps({
   isSticky: { type: Boolean, default: false },
@@ -132,8 +130,14 @@ const toggleAllMenu = () => {
   isDesktopMenuOpen.value = !isDesktopMenuOpen.value;
 };
 
-const goHome = () => {
-  // router.push('/') etc
+const goHome = async () => {
+  if (route.path === "/") {
+    // force re-render of current route
+    await router.replace({ path: "/_refresh" });
+    await router.replace({ path: "/" });
+  } else {
+    router.push("/");
+  }
 };
 
 const MOBILE_MENU = [
@@ -236,6 +240,24 @@ const MOBILE_MENU = [
 </script>
 
 <style scoped>
+/* if your CSS is scoped, you MUST use :deep() for Vuetify internals */
+:deep(.logo-btn .v-btn__overlay),
+:deep(.logo-btn .v-btn__underlay) {
+  opacity: 0 !important;
+  display: none !important;
+}
+
+/* kill any outline/shadow that might appear */
+.logo-btn,
+.logo-btn:focus,
+.logo-btn:focus-visible,
+.logo-btn:hover,
+.logo-btn:active {
+  outline: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+
 /* shared container width + padding */
 .bar-inner {
   max-width: 1440px;

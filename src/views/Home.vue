@@ -14,8 +14,8 @@
       </v-col>
     </v-row>
   </v-container>
-  <MainInfos />
   <NewInfos />
+  <MainInfos />
   <AlertBanner />
   <CommunicationChannel />
 </template>

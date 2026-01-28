@@ -80,9 +80,10 @@ onBeforeUnmount(() => stop());
 
           <!-- active -->
           <div class="active">
-            <img :src="slides[idx]" alt="banner" />
+            <a href="">
+              <img :src="slides[idx]" alt="banner" />
+            </a>
           </div>
-
           <!-- next (peek) -->
           <div class="peek peek-right" aria-hidden="true">
             <img :src="slides[(idx + 1) % total]" alt="" />
@@ -188,8 +189,8 @@ onBeforeUnmount(() => stop());
 .active {
   position: relative;
   z-index: 5;
-  width: min(780px, 78vw);
-  height: min(280px, 60%);
+  width: min(480px, 78vw);
+  height: min(240px, 60%);
   border-radius: 18px;
   overflow: hidden;
   /* box-shadow: 0 24px 60px rgba(0, 0, 0, 0.22); */
