@@ -1,54 +1,114 @@
 // src/router/index.js
 import { createRouter, createWebHistory } from "vue-router";
+import { h } from "vue";
 
 import Home from "@/views/Home.vue";
-import Board1 from "@/views/Board1.vue";
-import Board2 from "@/views/Board2.vue";
-import { h } from "vue";
+
+// ✅ Shared layout for participation/boards
+const ParticipationLayout = () => import("@/layouts/ParticipationLayout.vue");
+
+// ✅ Board pages
+const Board1 = () => import("@/views/Board1.vue");
+const Board1Write = () => import("@/views/Board1Write.vue");
+const Board1Detail = () => import("@/views/Board1Detail.vue");
+const Board2 = () => import("@/views/Board2.vue");
+
+const NotFound = () => import("@/views/NotFound.vue");
+
 const router = createRouter({
-  history: createWebHistory(), // clean URLs: /about (not #/about)
+  history: createWebHistory(),
   routes: [
+    // Home stays outside layout (your choice)
     { path: "/", name: "home", component: Home },
+
+    /**
+     * ✅ Board area wrapped with shared layout
+     * This layout should contain: drawer/left menu, app bar/nav, footer, satisfaction, and <router-view/>.
+     */
     {
-      path: "/board1",
-      name: "board1",
-      component: Board1,
-    },
-    {
-      path: "/board1/:id",
-      name: "praise-detail",
-      component: () => import("@/views/Board1Detail.vue"),
-    },
-    {
-      path: "/board1/write",
-      name: "praise-write",
-      component: () => import("@/views/Board1Write.vue"),
-    },
-    {
-      path: "/board2",
-      name: "praise",
-      component: () => import("@/views/Board2.vue"),
+      path: "/",
+      component: ParticipationLayout,
+      children: [
+        // ✅ IMPORTANT: put "write" BEFORE ":id" to avoid matching "write" as an id
+        {
+          path: "board1/write",
+          name: "board1-write",
+          component: Board1Write,
+          meta: {
+            title: "칭찬합시다",
+            breadcrumbs: [
+              { label: "HOME" },
+              { label: "참여소통" },
+              { label: "구민의견/참여" },
+              { label: "칭찬합시다" },
+              { label: "글쓰기" },
+            ],
+          },
+        },
+        {
+          path: "board1/:id",
+          name: "board1-detail",
+          component: Board1Detail,
+          meta: {
+            title: "칭찬합시다",
+            breadcrumbs: [
+              { label: "HOME" },
+              { label: "참여소통" },
+              { label: "구민의견/참여" },
+              { label: "칭찬합시다" },
+              { label: "상세" },
+            ],
+          },
+        },
+        {
+          path: "board1",
+          name: "board1",
+          component: Board1,
+          meta: {
+            title: "칭찬합시다",
+            breadcrumbs: [
+              { label: "HOME" },
+              { label: "참여소통" },
+              { label: "구민의견/참여" },
+              { label: "칭찬합시다" },
+            ],
+          },
+        },
+
+        {
+          path: "board2",
+          name: "board2",
+          component: Board2,
+          meta: {
+            title: "나도한마디",
+            breadcrumbs: [
+              { label: "HOME" },
+              { label: "참여소통" },
+              { label: "구민의견/참여" },
+              { label: "나도한마디" },
+            ],
+          },
+        },
+      ],
     },
 
+    // Keep your refresh route
     {
       path: "/_refresh",
       name: "_refresh",
-      component: { render: () => h("div") }, // ✅ runtime-only safe
+      component: { render: () => h("div") },
     },
-    // optional: 404
+
+    // 404
     {
       path: "/:pathMatch(.*)*",
       name: "notfound",
-      component: () => import("@/views/NotFound.vue"),
+      component: NotFound,
     },
   ],
-  scrollBehavior(to, from, savedPosition) {
-    // back/forward button
-    if (savedPosition) {
-      return savedPosition;
-    }
 
-    // always scroll to top on navigation
+  scrollBehavior(to, from, savedPosition) {
+    if (savedPosition) return savedPosition;
     return { top: 0 };
   },
 });

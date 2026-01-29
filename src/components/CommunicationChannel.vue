@@ -72,7 +72,7 @@ function go(href) {
             <!-- bottom row -->
             <a
               class="banner banner-talk"
-              :href="links.alarmtalk"
+              href=""
               :style="{ backgroundImage: `url(${talkBg})` }"
             >
               <div class="banner-title">용산구 알림톡 신청하기</div>
@@ -87,7 +87,7 @@ function go(href) {
 
             <a
               class="banner banner-sns span-2"
-              :href="links.sns"
+              href=""
               :style="{ backgroundImage: `url(${snsBg})` }"
             >
               <div class="sns-block">
@@ -120,7 +120,7 @@ function go(href) {
         <!-- YouTube (uses 2 images) -->
         <a
           class="banner banner-yt mobile-banner"
-          :href="links.youtube"
+          href=""
           :style="{ backgroundImage: `url(${ytBg})` }"
         >
           <span class="sr-only">유튜브</span>
@@ -141,7 +141,7 @@ function go(href) {
         <!-- 용산소식지 -->
         <a
           class="banner banner-news mobile-banner"
-          :href="links.newsletter"
+          href=""
           :style="{ backgroundImage: `url(${newsBg})` }"
         >
           <div class="banner-title">용산소식지</div>
@@ -153,7 +153,7 @@ function go(href) {
         <!-- 알림톡 -->
         <a
           class="banner banner-talk mobile-banner"
-          :href="links.alarmtalk"
+          href=""
           :style="{ backgroundImage: `url(${talkBg})` }"
         >
           <div class="banner-title">용산구 알림톡 신청하기</div>
@@ -165,7 +165,7 @@ function go(href) {
         <!-- SNS -->
         <a
           class="banner banner-sns mobile-banner"
-          :href="links.sns"
+          href=""
           :style="{ backgroundImage: `url(${snsBg})` }"
         >
           <div class="sns-block">

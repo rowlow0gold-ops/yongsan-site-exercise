@@ -73,14 +73,26 @@
             <v-expansion-panel-title>{{ item.label }}</v-expansion-panel-title>
             <v-expansion-panel-text>
               <v-list density="compact">
-                <v-list-item v-for="c in item.children" :key="c.id">
-                  {{ c.label }}
-                  <v-list density="compact" v-if="c.children">
-                    <v-list-item v-for="g in c.children" :key="g.id">
-                      — {{ g.label }}
-                    </v-list-item>
-                  </v-list>
-                </v-list-item>
+                <!-- Level 2 as foldable group -->
+                <v-list-group
+                  v-for="c in item.children"
+                  :key="c.id"
+                  :value="c.id"
+                >
+                  <!-- 2nd button (fold/unfold trigger) -->
+                  <template #activator="{ props }">
+                    <v-list-item v-bind="props" :title="c.label" />
+                  </template>
+
+                  <!-- Level 3 list -->
+                  <v-list-item
+                    v-for="g in c.children || []"
+                    :key="g.id"
+                    class="grandchild-item"
+                    :title="g.label"
+                    @click="goMenu(g)"
+                  />
+                </v-list-group>
               </v-list>
             </v-expansion-panel-text>
           </v-expansion-panel>
@@ -100,9 +112,22 @@
         <v-expansion-panel-title>{{ item.label }}</v-expansion-panel-title>
         <v-expansion-panel-text>
           <v-list density="compact">
-            <v-list-item v-for="c in item.children" :key="c.id">
-              {{ c.label }}
-            </v-list-item>
+            <!-- Level 2 as foldable group -->
+            <v-list-group v-for="c in item.children" :key="c.id" :value="c.id">
+              <!-- 2nd button (fold/unfold trigger) -->
+              <template #activator="{ props }">
+                <v-list-item v-bind="props" :title="c.label" />
+              </template>
+
+              <!-- Level 3 list -->
+              <v-list-item
+                v-for="g in c.children || []"
+                :key="g.id"
+                class="grandchild-item"
+                :title="g.label"
+                @click="goMenu(g)"
+              />
+            </v-list-group>
           </v-list>
         </v-expansion-panel-text>
       </v-expansion-panel>
@@ -128,6 +153,15 @@ const isDesktopMenuOpen = ref(false);
 
 const toggleAllMenu = () => {
   isDesktopMenuOpen.value = !isDesktopMenuOpen.value;
+};
+
+const goMenu = (menu) => {
+  isDesktopMenuOpen.value = false;
+  console.log("=======");
+  console.log(menu);
+  if (menu.href) {
+    router.push(menu.href);
+  }
 };
 
 const goHome = async () => {
@@ -169,9 +203,17 @@ const MOBILE_MENU = [
         label: "구민의견/참여",
         href: "",
         children: [
-          { id: "m2-1-1", label: "의견 제출", href: "" },
-          { id: "m2-1-2", label: "설문 참여", href: "" },
-          { id: "m2-1-3", label: "아이디어 제안", href: "" },
+          { id: "m2-1-1", label: "아이디어뱅크", href: "" },
+          { id: "m2-1-2", label: "설문참여", href: "" },
+          { id: "m2-1-3", label: "온라인 투표", href: "" },
+          { id: "m2-1-4", label: "수요조사게시판", href: "" },
+          { id: "m2-1-5", label: "칭찬합시다", href: "board1" },
+          { id: "m2-1-6", label: "나도한마디", href: "board2" },
+          { id: "m2-1-7", label: "국민생각함", href: "" },
+          { id: "m2-1-8", label: "공유서비스(공간, 공구대여 등)", href: "" },
+          { id: "m2-1-9", label: "대학생(청년) 아르바이트", href: "" },
+          { id: "m2-1-10", label: "도시텃밭", href: "" },
+          { id: "m2-1-11", label: "세무설명회", href: "" },
         ],
       },
       { id: "m2-2", label: "적극행정", href: "" },
@@ -405,5 +447,11 @@ const MOBILE_MENU = [
 /* overlay above sticky header */
 :global(.v-overlay) {
   z-index: 3000 !important;
+}
+
+.grandchild-item {
+  padding-left: 32px !important;
+  font-size: 13px;
+  opacity: 0.9;
 }
 </style>

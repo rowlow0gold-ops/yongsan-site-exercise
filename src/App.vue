@@ -20,6 +20,9 @@
       size="large"
       @click="scrollToTop"
     />
+    <v-snackbar v-if="show" v-model="show" :color="color" timeout="-1">
+      {{ message }}
+    </v-snackbar>
   </v-app>
 </template>
 
@@ -29,6 +32,9 @@ import UtilBar from "./components/UtilBar.vue";
 import Nav from "./components/Nav.vue";
 import Footer from "./components/Footer.vue";
 import { ref, onMounted, onBeforeUnmount } from "vue";
+import { useAlert } from "@/composables/useAlert";
+
+const { show, message, color, close } = useAlert();
 
 const isSticky = ref(false);
 const stickySentinel = ref(null);
@@ -70,6 +76,7 @@ function scrollToTop() {
 }
 
 onMounted(() => {
+  close(); // ✅ always start closed
   window.addEventListener("scroll", onScroll, { passive: true });
   window.addEventListener("resize", onScroll);
   onScroll(); // init
