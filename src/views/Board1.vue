@@ -17,6 +17,7 @@
         >({{ page }} / {{ pageCount }} 페이지)</span
       >
     </div>
+    
     <div class="text-body-2 text-primary">
       ※ 글쓰기 기능은 로그인 후에 이용 가능하지만, 테스트 기간 중에는 자유롭게
       가능합니다.
@@ -40,8 +41,6 @@ import { useDisplay } from "vuetify";
 
 import FiltersCard from "@/components/board/FiltersCard.vue";
 import BoardTable from "@/components/board/BoardTable.vue";
-
-const router = useRouter();
 const { mdAndUp } = useDisplay();
 
 const filters = reactive({ from: "", to: "", field: "title", q: "" });

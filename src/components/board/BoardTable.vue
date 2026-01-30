@@ -95,6 +95,10 @@
 
 <script setup>
 import { RouterLink } from "vue-router";
+import { useRouter, useRoute } from "vue-router";
+
+const router = useRouter();
+const route = useRoute();
 
 defineProps({
   mdAndUp: { type: Boolean, default: true },
@@ -106,7 +110,7 @@ defineProps({
 defineEmits(["update:page"]);
 
 function goWrite() {
-  router.push({ name: "board1-write" });
+  router.replace('/board1/write')
 }
 </script>
 

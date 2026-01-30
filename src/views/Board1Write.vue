@@ -166,7 +166,7 @@
 <script setup>
 import { ref } from "vue";
 import { useRouter } from "vue-router";
-import Breadcrumbs from "@/components/Breadcrumbs.vue";
+import Breadcrumbs from "@/components/participation/Breadcrumbs.vue";
 
 const router = useRouter();
 
@@ -215,8 +215,8 @@ function onEmailDomainModeChange(mode) {
   }
 }
 
-function goList() {
-  router.push("/participation/praise"); // change to your list route
+const goList = () => {
+  router.replace('/board1')
 }
 
 async function onSubmit() {
