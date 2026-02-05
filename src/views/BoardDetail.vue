@@ -1,0 +1,255 @@
+<template>
+  <div class="detail-wrap">
+    <!-- ✅ Title Area -->
+    <div class="title-area">
+      <h2 class="post-title">{{ post.title }}</h2>
+
+      <div class="meta-box">
+        <table class="meta-table">
+          <tbody>
+            <tr>
+              <th>Author</th>
+              <td>{{ post.author }}</td>
+              <th>Created</th>
+              <td>{{ post.createdAt }}</td>
+              <th>Views</th>
+              <td>{{ post.views }}</td>
+            </tr>
+            <tr>
+              <th>Attachments</th>
+              <td colspan="5">
+                <span v-if="post.attachments.length" class="files">
+                  <span
+                    v-for="(f, idx) in post.attachments"
+                    :key="idx"
+                    class="file-pill"
+                  >
+                    {{ f.name }}
+                  </span>
+                </span>
+                <span v-else class="muted">-</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ✅ Content Area -->
+    <div class="content-area">
+      <p v-for="(p, idx) in post.content" :key="idx" class="paragraph">
+        {{ p }}
+      </p>
+    </div>
+    <div class="d-flex align-center ga-2">
+      <!-- Left group -->
+      <v-btn color="primary" variant="flat" @click="goEdit"> 수정 </v-btn>
+
+      <v-btn
+        color="error"
+        variant="outlined"
+        :loading="deleting"
+        :disabled="deleting"
+        @click="onDelete"
+      >
+        삭제
+      </v-btn>
+
+      <!-- Push everything after this to the far right -->
+      <div class="ms-auto">
+        <v-btn variant="outlined" @click="goList"> 목록 </v-btn>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { computed, onMounted, ref, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
+import { fetchBoardDetail, deleteBoardPost } from "@/api/board"; // ✅ use your API helper
+
+const route = useRoute();
+const router = useRouter();
+
+const deleting = ref(false);
+
+async function onDelete() {
+  const ok = window.confirm("정말 삭제할까요?");
+  if (!ok) return;
+
+  deleting.value = true;
+  try {
+    await deleteBoardPost(boardKey.value, id.value);
+
+    // go back to the list page
+    router.replace(`/${boardKey.value}`);
+  } catch (e) {
+    console.error(e);
+    window.alert("삭제에 실패했습니다.");
+  } finally {
+    deleting.value = false;
+  }
+}
+
+// If you are passing props via router (props: true), keep this.
+// If not, we’ll fallback to route params below.
+const props = defineProps({
+  boardKey: { type: String, required: false },
+  id: { type: [String, Number], required: false },
+});
+
+const boardKey = computed(() =>
+  String(props.boardKey ?? route.params.boardKey ?? ""),
+);
+const id = computed(() => String(props.id ?? route.params.id ?? ""));
+
+function toYmd(v) {
+  if (!v) return "-";
+  return String(v).slice(0, 10);
+}
+
+function normalizeDetail(p) {
+  // backend detail DTO: id, boardKey, title, author, content, createdAt, updatedAt
+  return {
+    title: p.title ?? "-",
+    author: p.author ?? "-",
+    createdAt: toYmd(p.createdAt ?? p.created_at),
+    views: p.views ?? 0, // if not in backend yet -> 0
+    attachments: p.attachments ?? [], // you don’t have it yet -> []
+    // your template expects array of paragraphs:
+    content: Array.isArray(p.content)
+      ? p.content
+      : String(p.content ?? "")
+          .split("\n")
+          .filter(Boolean),
+  };
+}
+
+const loading = ref(false);
+const errorMsg = ref("");
+
+const post = ref({
+  title: "",
+  author: "-",
+  createdAt: "-",
+  views: 0,
+  attachments: [],
+  content: [],
+});
+
+async function loadDetail() {
+  if (!boardKey.value || !id.value) return;
+
+  loading.value = true;
+  errorMsg.value = "";
+
+  try {
+    const res = await fetchBoardDetail(boardKey.value, id.value);
+    post.value = normalizeDetail(res.data);
+  } catch (e) {
+    console.error(e);
+    errorMsg.value = `Post not found (boardKey=${boardKey.value}, id=${id.value})`;
+    post.value = {
+      title: errorMsg.value,
+      author: "-",
+      createdAt: "-",
+      views: 0,
+      attachments: [],
+      content: ["No record exists for this id."],
+    };
+  } finally {
+    loading.value = false;
+  }
+}
+
+onMounted(loadDetail);
+
+// reload when route changes (e.g., clicking different post)
+watch([boardKey, id], loadDetail);
+
+function goEdit() {
+  router.push({
+    name: "boardEdit",
+    params: { boardKey: boardKey.value, id: id.value },
+  });
+}
+
+function goList() {
+  router.replace(`/${boardKey.value}`);
+}
+</script>
+
+<style scoped>
+.detail-wrap {
+  max-width: 1100px;
+  margin: 24px auto;
+  padding: 0 16px;
+}
+
+/* Title Area */
+.title-area {
+  margin-bottom: 18px;
+}
+
+.post-title {
+  text-align: center;
+  font-size: 22px;
+  font-weight: 700;
+  margin: 10px 0 14px;
+}
+
+.meta-box {
+  border-top: 1px solid #e5e7eb;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.meta-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.meta-table th {
+  width: 110px;
+  background: #f7f7f7;
+  padding: 10px 12px;
+  text-align: left;
+  border-right: 1px solid #e5e7eb;
+  border-bottom: 1px solid #e5e7eb;
+  white-space: nowrap;
+}
+
+.meta-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.files {
+  display: inline-flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.file-pill {
+  padding: 4px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 999px;
+  font-size: 12px;
+}
+
+.muted {
+  color: #9ca3af;
+}
+
+/* Content Area */
+.content-area {
+  padding: 18px 6px;
+  min-height: 260px;
+}
+
+.paragraph {
+  line-height: 1.75;
+  margin: 0 0 10px;
+  font-size: 14px;
+}
+</style>

@@ -15,7 +15,10 @@
               <v-icon size="18" class="text-medium-emphasis">mdi-lock</v-icon>
               <RouterLink
                 class="text-decoration-none text-high-emphasis"
-                :to="{ name: 'board1-detail', params: { id: item.id } }"
+                :to="{
+                  name: 'boardDetail',
+                  params: { boardKey: currentBoardKey, id: item.id },
+                }"
               >
                 {{ item.title }}
               </RouterLink>
@@ -23,13 +26,14 @@
           </template>
         </v-data-table>
 
-        <div class="d-flex justify-center py-4">
+        <!-- ✅ Only show when needed + force numeric buttons -->
+        <div class="pagination-wrap" v-if="pageCount > 1">
           <v-pagination
             :model-value="page"
-            @update:modelValue="$emit('update:page', $event)"
             :length="pageCount"
-            rounded="lg"
-            density="comfortable"
+            :total-visible="7"
+            show-first-last
+            @update:modelValue="$emit('update:page', $event)"
           />
         </div>
       </template>
@@ -42,7 +46,10 @@
               <v-icon size="18" class="text-medium-emphasis">mdi-lock</v-icon>
               <RouterLink
                 class="text-decoration-none text-high-emphasis"
-                :to="{ name: 'board1-detail', params: { id: item.id } }"
+                :to="{
+                  name: 'boardDetail',
+                  params: { boardKey: currentBoardKey, id: item.id },
+                }"
               >
                 {{ item.title }}
               </RouterLink>
@@ -72,18 +79,20 @@
             <v-divider class="mt-4" />
           </div>
 
-          <div class="d-flex justify-center py-2">
+          <!-- ✅ Mobile: same forced numeric buttons -->
+          <div class="pagination-wrap" v-if="pageCount > 1">
             <v-pagination
               :model-value="page"
-              @update:modelValue="$emit('update:page', $event)"
               :length="pageCount"
-              rounded="lg"
-              density="comfortable"
+              :total-visible="5"
+              show-first-last
+              @update:modelValue="$emit('update:page', $event)"
             />
           </div>
         </div>
       </template>
     </v-card-text>
+
     <div class="board-actions">
       <v-btn color="primary" height="40" @click="goWrite">
         <v-icon start icon="mdi-pencil" />
@@ -94,8 +103,8 @@
 </template>
 
 <script setup>
-import { RouterLink } from "vue-router";
-import { useRouter, useRoute } from "vue-router";
+import { computed } from "vue";
+import { RouterLink, useRouter, useRoute } from "vue-router";
 
 const router = useRouter();
 const route = useRoute();
@@ -107,10 +116,22 @@ defineProps({
   page: { type: Number, default: 1 },
   pageCount: { type: Number, default: 1 },
 });
+
 defineEmits(["update:page"]);
 
+function getBoardKey() {
+  if (route.name === "board2" || route.path.startsWith("/board2"))
+    return "board2";
+  return "board1";
+}
+
+const currentBoardKey = computed(() => getBoardKey());
+
 function goWrite() {
-  router.replace('/board1/write')
+  router.push({
+    name: "boardWrite",
+    params: { boardKey: currentBoardKey.value },
+  });
 }
 </script>
 
@@ -126,5 +147,14 @@ function goWrite() {
   justify-content: flex-end;
   margin-bottom: 12px;
   margin-right: 12px;
+}
+
+/* ✅ Prevent pagination from shrinking/collapsing into arrows-only */
+.pagination-wrap {
+  display: flex;
+  justify-content: center;
+  padding: 16px 0;
+  flex: 0 0 auto;
+  min-width: 0;
 }
 </style>

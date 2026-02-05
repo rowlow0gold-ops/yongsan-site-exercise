@@ -9,9 +9,12 @@ const ParticipationLayout = () => import("@/layouts/ParticipationLayout.vue");
 
 // ✅ Board pages
 const Board1 = () => import("@/views/Board1.vue");
-const Board1Write = () => import("@/views/Board1Write.vue");
-const Board1Detail = () => import("@/views/Board1Detail.vue");
+const BoardWrite = () => import("@/views/BoardWrite.vue");
+const BoardDetail = () => import("@/views/BoardDetail.vue");
 const Board2 = () => import("@/views/Board2.vue");
+
+// ✅ NEW: Board Edit page
+const BoardEdit = () => import("@/views/BoardEdit.vue");
 
 const NotFound = () => import("@/views/NotFound.vue");
 
@@ -31,9 +34,9 @@ const router = createRouter({
       children: [
         // ✅ IMPORTANT: put "write" BEFORE ":id" to avoid matching "write" as an id
         {
-          path: "board1/write",
-          name: "board1-write",
-          component: Board1Write,
+          path: "board/:boardKey/write",
+          name: "boardWrite",
+          component: BoardWrite,
           meta: {
             title: "칭찬합시다",
             breadcrumbs: [
@@ -45,10 +48,31 @@ const router = createRouter({
             ],
           },
         },
+
+        // ✅ NEW: put "edit" BEFORE ":id" so it doesn't get captured as :id
         {
-          path: "board1/:id",
-          name: "board1-detail",
-          component: Board1Detail,
+          path: "board/:boardKey/:id/edit",
+          name: "boardEdit",
+          component: BoardEdit,
+          props: true,
+          meta: {
+            title: "칭찬합시다",
+            breadcrumbs: [
+              { label: "HOME" },
+              { label: "참여소통" },
+              { label: "구민의견/참여" },
+              { label: "구민의견/참여" },
+              { label: "칭찬합시다" },
+              { label: "수정" },
+            ],
+          },
+        },
+
+        {
+          path: "board/:boardKey/:id",
+          name: "boardDetail",
+          component: BoardDetail,
+          props: true,
           meta: {
             title: "칭찬합시다",
             breadcrumbs: [
@@ -60,6 +84,7 @@ const router = createRouter({
             ],
           },
         },
+
         {
           path: "board1",
           name: "board1",

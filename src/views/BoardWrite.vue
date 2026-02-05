@@ -164,12 +164,14 @@
 </template>
 
 <script setup>
-import { ref } from "vue";
-import { useRouter } from "vue-router";
+import { ref, computed } from "vue";
+import { useRouter, useRoute } from "vue-router";
+import api from "@/utils/api";
 import Breadcrumbs from "@/components/participation/Breadcrumbs.vue";
 
 const router = useRouter();
-
+const route = useRoute();
+const boardKey = computed(() => String(route.params.boardKey || ""));
 const breadcrumbs = [
   { title: "HOME", to: "/" },
   { title: "참여소통" },
@@ -177,7 +179,7 @@ const breadcrumbs = [
   { title: "칭찬합시다", disabled: true },
 ];
 
-const author = ref("JANG");
+const author = ref("무명");
 const visibility = ref("PUBLIC");
 
 const phonePrefixes = ["010", "011", "016", "017", "018", "019"];
@@ -216,8 +218,8 @@ function onEmailDomainModeChange(mode) {
 }
 
 const goList = () => {
-  router.replace('/board1')
-}
+  router.replace("/board1");
+};
 
 async function onSubmit() {
   const form = formRef.value;
@@ -242,6 +244,7 @@ async function onSubmit() {
 
   // TODO: call your API here
   console.log("submit payload:", payload);
+  await api.post(`/api/boards/${boardKey.value}/posts`, payload);
 
   // After success:
   goList();
