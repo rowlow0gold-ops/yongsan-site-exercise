@@ -14,19 +14,57 @@
       <v-spacer />
 
       <div class="util-actions">
-        <v-btn variant="text" class="util-btn" prepend-icon="mdi-account"
-          >로그인</v-btn
+        <!-- ✅ open popup -->
+        <v-btn
+          variant="text"
+          class="util-btn"
+          prepend-icon="mdi-account"
+          @click="loginOpen = true"
         >
-        <v-btn variant="text" class="util-btn" prepend-icon="mdi-account-plus"
-          >회원가입</v-btn
-        >
-        <v-btn variant="text" class="util-btn" prepend-icon="mdi-earth"
-          >Language</v-btn
-        >
+          로그인
+        </v-btn>
+
+        <v-btn
+  variant="text"
+  class="util-btn"
+  prepend-icon="mdi-account-plus"
+  :to="{ name: 'signup', query: { step: 1 } }"
+>
+  회원가입
+</v-btn>
+
+        <v-btn variant="text" class="util-btn" prepend-icon="mdi-earth">
+          Language
+        </v-btn>
       </div>
     </v-container>
+    <LoginDialog
+  v-model="loginOpen"
+  @go-signup="goSignup"
+/>
   </v-sheet>
 </template>
+
+<script setup>
+import { ref } from "vue"
+import LoginDialog from "@/components/auth/LoginDialog.vue"
+import { useRouter } from "vue-router"
+
+const router = useRouter()
+
+function goSignup() {
+  loginOpen.value = false
+  router.push({ name: "signup", query: { step: 1 } })
+}
+
+const loginOpen = ref(false)
+
+function onLoginSuccess() {
+  // frontend-only for now: just close and optionally show a message
+  // dialog already closes itself in the component, so this can be empty.
+  // Later you can route to mypage or change header state.
+}
+</script>
 
 <style scoped>
 .bar-inner {

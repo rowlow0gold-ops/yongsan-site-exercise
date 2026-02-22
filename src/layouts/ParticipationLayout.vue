@@ -1,12 +1,13 @@
 <template>
   <v-app>
-    <SideNav
-      v-model="drawer"
-      :md-and-up="mdAndUp"
-      :active-route-name="route.name"
-      @go="onGo"
-    />
-
+<component
+  :is="sidebarComponent"
+  v-model="drawer"
+  :md-and-up="mdAndUp"
+  :active-route-name="route.name"
+  :step="signupStep"
+  @go="onGo"
+/>
     <TopBar :md-and-up="mdAndUp" v-model="drawer" :title="layoutTitle">
       <template #subtitle>
         <Breadcrumbs :items="breadcrumbs" />
@@ -35,12 +36,15 @@ import TopBar from "@/components/participation/TopBar.vue";
 import Breadcrumbs from "@/components/participation/Breadcrumbs.vue";
 import SatisfactionSurvey from "@/components/participation/SatisfactionSurvey.vue";
 import Footer from "@/components/Footer.vue";
+import SignupStepsSidebar from "@/components/auth/SignupStepsSidebar.vue";
 
 const router = useRouter();
 const route = useRoute();
 const { mdAndUp } = useDisplay();
 
 const drawer = ref(true);
+
+const signupStep = computed(() => Number(route.query.step || 1))
 
 /**
  * If you want different title/breadcrumbs per page,
@@ -62,6 +66,13 @@ function onGo(payload) {
   // payload: { name: 'board1' } etc
   router.push(payload);
 }
+
+
+const sidebarComponent = computed(() => {
+  return route.meta?.sidebar === "signupSteps" ? SignupStepsSidebar : SideNav;
+});
+
+
 </script>
 
 <style scoped>

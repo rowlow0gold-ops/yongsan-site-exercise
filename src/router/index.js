@@ -130,6 +130,17 @@ const router = createRouter({
       name: "notfound",
       component: NotFound,
     },
+
+    {
+  path: "/signup",
+  name: "signup",
+  component: () => import("@/views/Signup.vue"),
+  meta: {
+    title: "회원가입",
+    sidebar: "signupSteps", // ✅ switch sidebar
+    breadcrumbs: [{ label: "HOME" }, { label: "회원가입" }],
+  },
+},
   ],
 
   scrollBehavior(to, from, savedPosition) {
