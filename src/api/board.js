@@ -10,6 +10,9 @@ export function fetchBoardDetail(boardKey, id) {
   return api.get(`/api/boards/${boardKey}/posts/${id}`);
 }
 
-export function deleteBoardPost(boardKey, id) {
-  return api.delete(`/api/boards/${boardKey}/posts/${id}`);
+export function deleteBoardPost(boardKey, id, password) {
+  // If your backend expects body on DELETE:
+  return api.delete(`/api/boards/${boardKey}/posts/${id}`, {
+    data: password ? { password } : undefined,
+  });
 }

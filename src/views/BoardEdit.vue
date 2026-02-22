@@ -10,8 +10,34 @@
     <v-card-text>
       <v-form ref="formRef" @submit.prevent="onSubmit">
         <v-row class="align-center">
-          <v-col cols="12" md="2" class="text-grey-darken-1">작성자</v-col>
-          <v-col cols="12" md="10">{{ author }}</v-col>
+          <!-- 작성자 -->
+          <v-col cols="12" md="2" class="text-grey-darken-1 form-label"
+            >작성자</v-col
+          >
+          <v-col cols="12" md="10" class="form-value">{{ author }}</v-col>
+
+          <!-- 비밀번호 (praise only) -->
+          <v-col
+            v-if="isPraise"
+            cols="12"
+            md="2"
+            class="text-grey-darken-1 form-label"
+          >
+            비밀번호 <span class="text-red">*</span>
+          </v-col>
+          <v-col v-if="isPraise" cols="12" md="10" class="form-value">
+            <v-text-field
+              v-model="password"
+              type="password"
+              variant="outlined"
+              density="compact"
+              :rules="[rules.pwMin6]"
+              placeholder="6자 이상 입력"
+              autocomplete="new-password"
+              style="max-width: 420px"
+              required
+            />
+          </v-col>
 
           <v-col cols="12" md="2" class="text-grey-darken-1">
             공개여부 <span class="text-red">*</span>
@@ -179,7 +205,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from "vue";
+import { ref, onMounted, computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import Breadcrumbs from "@/components/participation/Breadcrumbs.vue";
 import api from "@/utils/api";
@@ -193,6 +219,31 @@ if (!boardKey.value) {
 }
 
 const id = ref(route.params.id);
+
+const isPraise = computed(() => String(boardKey.value) === "board1");
+
+const password = ref("");
+const pwKey = computed(() => `boardPostPw:${boardKey.value}:${id.value}`);
+
+onMounted(() => {
+  // ✅ Guard: block direct URL access for praise board
+  if (isPraise.value) {
+    password.value = sessionStorage.getItem(pwKey.value) || "";
+
+    if (!password.value || password.value.length < 6) {
+      alert(
+        "비밀번호 확인이 필요합니다. 상세페이지에서 수정 버튼을 눌러주세요.",
+      );
+      router.replace({
+        name: "boardDetail",
+        params: { boardKey: boardKey.value, id: id.value },
+      });
+      return;
+    }
+  }
+
+  loadPost();
+});
 
 const breadcrumbs = ref([
   { title: "HOME", to: "/" },
@@ -233,6 +284,10 @@ const saving = ref(false);
 const rules = {
   required: (v) => !!v || "Required",
   mustAgree: (v) => v === true || "You must agree",
+  pwMin6: (v) =>
+    !isPraise.value ||
+    (v && v.length >= 6) ||
+    "Password must be at least 6 characters.",
 };
 
 function onEmailDomainModeChange(mode) {
@@ -302,6 +357,10 @@ async function onSubmit() {
 
   const { valid } = await form.validate();
   if (!valid) return;
+  if (isPraise.value && (!password.value || password.value.length < 6)) {
+    alert("비밀번호는 6자 이상 입력해주세요.");
+    return;
+  }
 
   const payload = {
     author: author.value,
@@ -314,11 +373,13 @@ async function onSubmit() {
     title: title.value,
     content: content.value,
     agree: agree.value,
+    ...(isPraise.value ? { password: password.value } : {}),
   };
 
   saving.value = true;
   try {
     await api.put(`/api/boards/${boardKey.value}/posts/${id.value}`, payload);
+    sessionStorage.removeItem(pwKey.value);
     goDetail();
   } catch (e) {
     console.error(e);
@@ -327,6 +388,4 @@ async function onSubmit() {
     saving.value = false;
   }
 }
-
-onMounted(loadPost);
 </script>

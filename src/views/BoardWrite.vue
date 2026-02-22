@@ -10,8 +10,34 @@
     <v-card-text>
       <v-form ref="formRef" @submit.prevent="onSubmit">
         <v-row class="align-center">
-          <v-col cols="12" md="2" class="text-grey-darken-1">작성자</v-col>
-          <v-col cols="12" md="10">{{ author }}</v-col>
+          <!-- 작성자 -->
+          <v-col cols="12" md="2" class="text-grey-darken-1 form-label"
+            >작성자</v-col
+          >
+          <v-col cols="12" md="10" class="form-value">{{ author }}</v-col>
+
+          <!-- 비밀번호 (praise only) -->
+          <v-col
+            v-if="isPraise"
+            cols="12"
+            md="2"
+            class="text-grey-darken-1 form-label"
+          >
+            비밀번호 <span class="text-red">*</span>
+          </v-col>
+          <v-col v-if="isPraise" cols="12" md="10" class="form-value">
+            <v-text-field
+              v-model="password"
+              type="password"
+              variant="outlined"
+              density="compact"
+              :rules="[rules.pwMin6]"
+              placeholder="6자 이상 입력"
+              autocomplete="new-password"
+              style="max-width: 420px"
+              required
+            />
+          </v-col>
 
           <v-col cols="12" md="2" class="text-grey-darken-1">
             공개여부 <span class="text-red">*</span>
@@ -204,9 +230,16 @@ const agree = ref(false);
 
 const formRef = ref(null);
 
+const isPraise = computed(() => boardKey.value === "board1");
+const password = ref("");
+
 const rules = {
   required: (v) => !!v || "Required",
   mustAgree: (v) => v === true || "You must agree",
+  pwMin6: (v) =>
+    !isPraise.value ||
+    (v && v.length >= 6) ||
+    "Password must be at least 6 characters.",
 };
 
 function onEmailDomainModeChange(mode) {
@@ -240,6 +273,7 @@ async function onSubmit() {
     content: content.value,
     agree: agree.value,
     files: files.value,
+    ...(isPraise.value ? { password: password.value } : {}),
   };
 
   // TODO: call your API here

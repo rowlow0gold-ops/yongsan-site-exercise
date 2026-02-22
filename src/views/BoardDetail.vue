@@ -43,14 +43,14 @@
     </div>
     <div class="d-flex align-center ga-2">
       <!-- Left group -->
-      <v-btn color="primary" variant="flat" @click="goEdit"> 수정 </v-btn>
+      <v-btn color="primary" variant="flat" @click="onEditClick"> 수정 </v-btn>
 
       <v-btn
         color="error"
         variant="outlined"
         :loading="deleting"
         :disabled="deleting"
-        @click="onDelete"
+        @click="onDeleteClick"
       >
         삭제
       </v-btn>
@@ -61,6 +61,33 @@
       </div>
     </div>
   </div>
+  <v-dialog v-model="pwDialog" max-width="420">
+    <v-card>
+      <v-card-title class="text-subtitle-1"> 비밀번호 확인 </v-card-title>
+
+      <v-card-text>
+        <v-text-field
+          v-model="pw"
+          type="password"
+          label="비밀번호 (6자 이상)"
+          variant="outlined"
+          density="compact"
+          autocomplete="current-password"
+          :error-messages="pwError ? [pwError] : []"
+          @keyup.enter="confirmPw"
+        />
+        <div class="text-caption text-grey-darken-1">
+          칭찬합시다 게시판은 비회원 수정/삭제 시 비밀번호가 필요합니다.
+        </div>
+      </v-card-text>
+
+      <v-card-actions>
+        <v-spacer />
+        <v-btn variant="outlined" @click="pwDialog = false">취소</v-btn>
+        <v-btn color="primary" variant="flat" @click="confirmPw">확인</v-btn>
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
 </template>
 
 <script setup>
@@ -72,6 +99,83 @@ const route = useRoute();
 const router = useRouter();
 
 const deleting = ref(false);
+
+const pwDialog = ref(false);
+const pw = ref("");
+const pwAction = ref("delete"); // "delete" | "edit"
+const pwError = ref("");
+
+const isPraise = computed(() => boardKey.value === "board1");
+
+async function confirmPw() {
+  if (!validatePw()) return;
+
+  // close dialog immediately for snappy UX
+  pwDialog.value = false;
+
+  if (pwAction.value === "delete") {
+    deleting.value = true;
+    try {
+      // IMPORTANT: your delete API must accept password
+      await deleteBoardPost(boardKey.value, id.value, pw.value);
+      router.replace(`/${boardKey.value}`);
+    } catch (e) {
+      console.error(e);
+      window.alert("비밀번호가 올바르지 않거나 삭제에 실패했습니다.");
+    } finally {
+      deleting.value = false;
+    }
+    return;
+  }
+
+  // edit
+  // store password temporarily so edit page can submit it
+  sessionStorage.setItem(`boardPostPw:${boardKey.value}:${id.value}`, pw.value);
+
+  goEdit();
+}
+
+function openPwDialog(action) {
+  pwAction.value = action;
+  pw.value = "";
+  pwError.value = "";
+  pwDialog.value = true;
+}
+
+function onDeleteClick() {
+  //   const ok = window.confirm("정말 삭제할까요?");
+  //   if (!ok) return;
+
+  if (!isPraise.value) return onDeleteNoPw();
+  openPwDialog("delete");
+}
+
+async function onDeleteNoPw() {
+  deleting.value = true;
+  try {
+    await deleteBoardPost(boardKey.value, id.value);
+    router.replace(`/${boardKey.value}`);
+  } catch (e) {
+    console.error(e);
+    window.alert("삭제에 실패했습니다.");
+  } finally {
+    deleting.value = false;
+  }
+}
+
+function validatePw() {
+  if (!pw.value || pw.value.length < 6) {
+    pwError.value = "비밀번호는 6자 이상이어야 합니다.";
+    return false;
+  }
+  pwError.value = "";
+  return true;
+}
+
+function onEditClick() {
+  if (!isPraise.value) return goEdit(); // other boards: no password
+  openPwDialog("edit");
+}
 
 async function onDelete() {
   const ok = window.confirm("정말 삭제할까요?");
