@@ -25,39 +25,46 @@
         </v-btn>
 
         <v-btn
-  variant="text"
-  class="util-btn"
-  prepend-icon="mdi-account-plus"
-  :to="{ name: 'signup', query: { step: 1 } }"
->
-  회원가입
-</v-btn>
+          variant="text"
+          class="util-btn"
+          prepend-icon="mdi-account-plus"
+          :to="signupOrMypageRoute"
+        >
+          {{ auth.isAuthed ? "마이페이지" : "회원가입" }}
+        </v-btn>
 
         <v-btn variant="text" class="util-btn" prepend-icon="mdi-earth">
           Language
         </v-btn>
       </div>
     </v-container>
-    <LoginDialog
-  v-model="loginOpen"
-  @go-signup="goSignup"
-/>
+    <LoginDialog v-model="loginOpen" @go-signup="goSignup" />
   </v-sheet>
 </template>
 
 <script setup>
-import { ref } from "vue"
-import LoginDialog from "@/components/auth/LoginDialog.vue"
-import { useRouter } from "vue-router"
+import { ref, computed } from "vue";
+import LoginDialog from "@/components/auth/LoginDialog.vue";
+import { useRouter } from "vue-router";
+import { useAuthStore } from "@/stores/auth";
 
-const router = useRouter()
+const router = useRouter();
+const auth = useAuthStore();
+
+const signupOrMypageRoute = computed(() => {
+  if (auth.isAuthed) {
+    return { path: "/mypage" };
+  } else {
+    return { name: "signup", query: { step: 1 } };
+  }
+});
 
 function goSignup() {
-  loginOpen.value = false
-  router.push({ name: "signup", query: { step: 1 } })
+  loginOpen.value = false;
+  router.push({ name: "signup", query: { step: 1 } });
 }
 
-const loginOpen = ref(false)
+const loginOpen = ref(false);
 
 function onLoginSuccess() {
   // frontend-only for now: just close and optionally show a message

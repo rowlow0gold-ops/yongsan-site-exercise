@@ -1,6 +1,7 @@
 // src/router/index.js
 import { createRouter, createWebHistory } from "vue-router";
 import { h } from "vue";
+import { useAuthStore } from "@/stores/auth";
 
 import Home from "@/views/Home.vue";
 
@@ -132,21 +133,36 @@ const router = createRouter({
     },
 
     {
-  path: "/signup",
-  name: "signup",
-  component: () => import("@/views/Signup.vue"),
-  meta: {
-    title: "회원가입",
-    sidebar: "signupSteps", // ✅ switch sidebar
-    breadcrumbs: [{ label: "HOME" }, { label: "회원가입" }],
-  },
-},
+      path: "/signup",
+      name: "signup",
+      component: () => import("@/views/Signup.vue"),
+      meta: {
+        title: "회원가입",
+        sidebar: "signupSteps", // ✅ switch sidebar
+        breadcrumbs: [{ label: "HOME" }, { label: "회원가입" }],
+      },
+    },
+
+    {
+      path: "/mypage",
+      component: () => import("@/views/MyPage.vue"),
+      meta: { requiresAuth: true },
+    },
   ],
 
   scrollBehavior(to, from, savedPosition) {
     if (savedPosition) return savedPosition;
     return { top: 0 };
   },
+});
+
+router.beforeEach((to) => {
+  const auth = useAuthStore();
+
+  // If route requires auth and user is not logged in → go home (or open login)
+  if (to.meta?.requiresAuth && !auth.isAuthed) {
+    return { path: "/", query: { login: "1", redirect: to.fullPath } };
+  }
 });
 
 export default router;
