@@ -76,6 +76,7 @@
 import { computed, ref } from "vue";
 import api from "@/lib/api";
 import { useAuthStore } from "@/stores/auth";
+import { loginApi } from "@/api/auth";
 
 const props = defineProps({ modelValue: Boolean });
 const emit = defineEmits(["update:modelValue", "success", "go-signup"]);

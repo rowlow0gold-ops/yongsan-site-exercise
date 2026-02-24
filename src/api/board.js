@@ -1,4 +1,4 @@
-import api from "@/utils/api";
+import api from "@/lib/api";
 
 // LIST (with paging/search if you want later)
 export function fetchBoardList(boardKey, params) {

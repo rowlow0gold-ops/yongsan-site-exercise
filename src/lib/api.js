@@ -1,13 +1,28 @@
 import axios from "axios";
+import { useAuthStore } from "@/stores/auth";
+import pinia from "@/plugins/pinia";
+console.log("[api.js loaded] pinia=", pinia);
+const baseURL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:8080",
-  withCredentials: true, // ✅ required for HttpOnly refresh cookie
+  baseURL,
+  withCredentials: true,
+});
+
+const refreshClient = axios.create({
+  baseURL,
+  withCredentials: true,
 });
 
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("accessToken");
-  if (token) config.headers.Authorization = `Bearer ${token}`;
+  const auth = useAuthStore(pinia); // or useAuthStore() if you use active pinia
+  console.log("[api req] auth=", auth, "token=", auth?.accessToken);
+  const token = auth?.accessToken; // ✅ prevents crash even if undefined
+
+  if (token) {
+    config.headers = config.headers || {};
+    config.headers.Authorization = `Bearer ${token}`;
+  }
   return config;
 });
 
@@ -25,16 +40,17 @@ function processQueue(error, token = null) {
 api.interceptors.response.use(
   (res) => res,
   async (err) => {
-    const original = err.config;
     const status = err?.response?.status;
+    const original = err.config;
 
-    if (status === 401 && !original._retry) {
+    if (status === 401 && original && !original._retry) {
       original._retry = true;
 
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           queue.push({ resolve, reject });
         }).then((token) => {
+          original.headers = original.headers || {}; // ✅ avoid undefined
           original.headers.Authorization = `Bearer ${token}`;
           return api(original);
         });
@@ -43,19 +59,23 @@ api.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        // ✅ backend should read refresh cookie and return new accessToken
-        const { data } = await api.post("/auth/refresh");
+        const auth = useAuthStore(pinia); // ✅ IMPORTANT
+
+        const { data } = await refreshClient.post("/auth/refresh");
         const newToken = data.accessToken;
 
-        localStorage.setItem("accessToken", newToken);
+        auth.setAccessToken(newToken);
         processQueue(null, newToken);
 
+        original.headers = original.headers || {}; // ✅ avoid undefined
         original.headers.Authorization = `Bearer ${newToken}`;
         return api(original);
       } catch (refreshErr) {
+        const auth = useAuthStore(pinia); // ✅ IMPORTANT
+        auth.clearAuth();
         processQueue(refreshErr, null);
-        localStorage.removeItem("accessToken");
-        // optional: route to home and open login dialog
+
+        window.location.href = "/?login=1";
         return Promise.reject(refreshErr);
       } finally {
         isRefreshing = false;

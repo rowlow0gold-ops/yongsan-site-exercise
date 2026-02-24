@@ -192,7 +192,7 @@
 <script setup>
 import { ref, computed } from "vue";
 import { useRouter, useRoute } from "vue-router";
-import api from "@/utils/api";
+import api from "@/lib/api";
 import Breadcrumbs from "@/components/participation/Breadcrumbs.vue";
 
 const router = useRouter();

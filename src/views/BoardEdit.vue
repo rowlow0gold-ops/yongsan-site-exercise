@@ -208,7 +208,7 @@
 import { ref, onMounted, computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import Breadcrumbs from "@/components/participation/Breadcrumbs.vue";
-import api from "@/utils/api";
+import api from "@/lib/api";
 
 const route = useRoute();
 const router = useRouter();

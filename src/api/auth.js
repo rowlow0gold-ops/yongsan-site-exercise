@@ -1,17 +1,21 @@
-import api from "@/utils/api";
+// src/api/auth.js
+import api from "@/lib/api";
 
-// LOGIN
-export function login(email, password) {
-  return api.post("/auth/login", { email, password });
+export function loginApi(email, password) {
+  return api.post("/auth/login", {
+    email,
+    password,
+  });
 }
 
-// LOGOUT (optional)
-export function logout() {
-  // If you have a backend logout endpoint later:
+export function refreshApi() {
+  return api.post("/auth/refresh");
+}
+
+export function logoutApi() {
   return api.post("/auth/logout");
 }
 
-// ME (optional)
-export function fetchMe() {
+export function meApi() {
   return api.get("/auth/me");
 }
