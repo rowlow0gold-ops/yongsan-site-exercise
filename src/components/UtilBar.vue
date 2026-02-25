@@ -13,15 +13,18 @@
 
       <v-spacer />
 
+      <!-- ✅ JWT time left -->
+      <div v-if="auth.isAuthed" class="jwt-left">⏳ {{ jwtLeftText }}</div>
+
       <div class="util-actions">
         <!-- ✅ open popup -->
         <v-btn
           variant="text"
           class="util-btn"
-          prepend-icon="mdi-account"
-          @click="loginOpen = true"
+          :prepend-icon="auth.isAuthed ? 'mdi-logout' : 'mdi-account'"
+          @click="handleAuthClick"
         >
-          로그인
+          {{ auth.isAuthed ? "로그아웃" : "로그인" }}
         </v-btn>
 
         <v-btn
@@ -43,7 +46,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from "vue";
+import { ref, computed, onMounted, onUnmounted } from "vue";
 import LoginDialog from "@/components/auth/LoginDialog.vue";
 import { useRouter } from "vue-router";
 import { useAuthStore } from "@/stores/auth";
@@ -58,6 +61,60 @@ const signupOrMypageRoute = computed(() => {
     return { name: "signup", query: { step: 1 } };
   }
 });
+
+// tick every second so computed updates
+const now = ref(Date.now());
+let timerId;
+
+onMounted(() => {
+  timerId = setInterval(() => (now.value = Date.now()), 1000);
+});
+onUnmounted(() => clearInterval(timerId));
+
+function getExpMsFromJwt(token) {
+  if (!token) return null;
+  // just in case someone stored "Bearer xxx"
+  token = token.replace(/^Bearer\s+/i, "");
+
+  const parts = token.split(".");
+  if (parts.length !== 3) return null;
+
+  try {
+    const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const padded = base64 + "===".slice((base64.length + 3) % 4);
+    const payload = JSON.parse(atob(padded));
+    return typeof payload.exp === "number" ? payload.exp * 1000 : null;
+  } catch {
+    return null;
+  }
+}
+
+function formatMs(ms) {
+  ms = Math.max(0, ms);
+  const totalSec = Math.floor(ms / 1000);
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  return h > 0 ? `${h}h ${m}m ${s}s` : `${m}m ${s}s`;
+}
+
+const jwtLeftText = computed(() => {
+  const expMs = getExpMsFromJwt(auth.accessToken);
+  if (!auth.isAuthed) return "";
+  if (!expMs) return "JWT: (no exp)";
+  const left = expMs - now.value;
+  if (left <= 0) return "JWT: expired";
+  return `JWT: ${formatMs(left)}`;
+});
+
+function handleAuthClick() {
+  if (auth.isAuthed) {
+    auth.clearAuth(); // logout
+    router.push("/"); // optional redirect
+  } else {
+    loginOpen.value = true; // open login dialog
+  }
+}
 
 function goSignup() {
   loginOpen.value = false;
@@ -126,5 +183,15 @@ function onLoginSuccess() {
   color: #111 !important;
   min-width: auto !important;
   padding: 0 8px !important;
+}
+
+.jwt-left {
+  font-size: 14px;
+  font-weight: 800;
+  margin-right: 10px;
+  padding: 0 8px;
+  display: flex;
+  align-items: center;
+  color: #111;
 }
 </style>

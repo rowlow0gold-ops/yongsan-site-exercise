@@ -1,9 +1,18 @@
 import { defineStore } from "pinia";
+import { getJwtExpMs } from "@/lib/jwt";
 
 export const useAuthStore = defineStore("auth", {
   state: () => ({
     accessToken: localStorage.getItem("accessToken") || "",
     user: JSON.parse(localStorage.getItem("authUser") || "null"),
+
+    expiresAtMs: (s) => getJwtExpMs(s.accessToken), // timestamp (ms) or null
+
+    timeLeftMs: (s) => {
+      const exp = getJwtExpMs(s.accessToken);
+      if (!exp) return 0;
+      return Math.max(0, exp - Date.now());
+    },
   }),
 
   getters: {
