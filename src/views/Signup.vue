@@ -92,7 +92,7 @@
         <!-- STEP 3 -->
         <v-stepper-window-item :value="3">
           <v-alert type="success" variant="tonal" class="mb-6">
-            회원가입 UI 완료! (백엔드 연결은 나중에)
+            회원가입 UI 완료!
           </v-alert>
 
           <div class="d-flex justify-end">
