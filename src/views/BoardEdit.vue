@@ -18,14 +18,19 @@
 
           <!-- 비밀번호 (praise only) -->
           <v-col
-            v-if="isPraise"
+            v-if="isPraise && isGuestPost"
             cols="12"
             md="2"
             class="text-grey-darken-1 form-label"
           >
             비밀번호 <span class="text-red">*</span>
           </v-col>
-          <v-col v-if="isPraise" cols="12" md="10" class="form-value">
+          <v-col
+            v-if="isPraise && isGuestPost"
+            cols="12"
+            md="10"
+            class="form-value"
+          >
             <v-text-field
               v-model="password"
               type="password"
@@ -207,11 +212,18 @@
 <script setup>
 import { ref, onMounted, computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
+import { useAuthStore } from "@/stores/auth";
 import Breadcrumbs from "@/components/participation/Breadcrumbs.vue";
 import api from "@/lib/api";
 
 const route = useRoute();
 const router = useRouter();
+
+const auth = useAuthStore();
+
+const authorUserId = ref(null);
+const isGuestPost = computed(() => authorUserId.value == null);
+const isLoggedIn = computed(() => auth.isAuthed);
 
 const boardKey = ref(route.params.boardKey);
 if (!boardKey.value) {
@@ -225,24 +237,11 @@ const isPraise = computed(() => String(boardKey.value) === "board1");
 const password = ref("");
 const pwKey = computed(() => `boardPostPw:${boardKey.value}:${id.value}`);
 
-onMounted(() => {
-  // ✅ Guard: block direct URL access for praise board
-  if (isPraise.value) {
-    password.value = sessionStorage.getItem(pwKey.value) || "";
-
-    if (!password.value || password.value.length < 6) {
-      alert(
-        "비밀번호 확인이 필요합니다. 상세페이지에서 수정 버튼을 눌러주세요.",
-      );
-      router.replace({
-        name: "boardDetail",
-        params: { boardKey: boardKey.value, id: id.value },
-      });
-      return;
-    }
+onMounted(async () => {
+  if (auth.isAuthed && auth.user?.name) {
+    author.value = auth.user.name;
   }
-
-  loadPost();
+  await loadPost(); // ✅ load first (so we know authorUserId)
 });
 
 const breadcrumbs = ref([
@@ -274,7 +273,7 @@ const emailDomainOptions = [
 const title = ref("");
 const content = ref("");
 const files = ref([]);
-const agree = ref(false);
+const agree = ref(true);
 
 const formRef = ref(null);
 
@@ -331,11 +330,32 @@ async function loadPost() {
 
     const data = res.data;
 
+    authorUserId.value = data.authorUserId ?? null;
+
+    // If this is a guest post on praise board, we need password from sessionStorage
+    if (isPraise.value && isGuestPost.value) {
+      password.value = sessionStorage.getItem(pwKey.value) || "";
+
+      if (!password.value || password.value.length < 6) {
+        alert(
+          "비밀번호 확인이 필요합니다. 상세페이지에서 수정 버튼을 눌러주세요.",
+        );
+        router.replace({
+          name: "boardDetail",
+          params: { boardKey: boardKey.value, id: id.value },
+        });
+        return;
+      }
+    } else {
+      // member post: never keep password
+      password.value = "";
+    }
+
     author.value = data.author ?? author.value;
     visibility.value = data.visibility ?? "PUBLIC";
     title.value = data.title ?? "";
     content.value = data.content ?? "";
-    agree.value = data.agree ?? false;
+    agree.value = data.agree ?? true;
 
     splitPhone(data.phone);
     splitEmail(data.email);
@@ -357,7 +377,11 @@ async function onSubmit() {
 
   const { valid } = await form.validate();
   if (!valid) return;
-  if (isPraise.value && (!password.value || password.value.length < 6)) {
+  if (
+    isPraise.value &&
+    isGuestPost.value &&
+    (!password.value || password.value.length < 6)
+  ) {
     alert("비밀번호는 6자 이상 입력해주세요.");
     return;
   }
@@ -373,7 +397,9 @@ async function onSubmit() {
     title: title.value,
     content: content.value,
     agree: agree.value,
-    ...(isPraise.value ? { password: password.value } : {}),
+    ...(isPraise.value && isGuestPost.value
+      ? { password: password.value }
+      : {}),
   };
 
   saving.value = true;

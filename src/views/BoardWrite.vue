@@ -18,14 +18,19 @@
 
           <!-- 비밀번호 (praise only) -->
           <v-col
-            v-if="isPraise"
+            v-if="isPraise && !isLoggedIn"
             cols="12"
             md="2"
             class="text-grey-darken-1 form-label"
           >
             비밀번호 <span class="text-red">*</span>
           </v-col>
-          <v-col v-if="isPraise" cols="12" md="10" class="form-value">
+          <v-col
+            v-if="isPraise && !isLoggedIn"
+            cols="12"
+            md="10"
+            class="form-value"
+          >
             <v-text-field
               v-model="password"
               type="password"
@@ -190,13 +195,24 @@
 </template>
 
 <script setup>
-import { ref, computed } from "vue";
+import { ref, computed, onMounted } from "vue";
 import { useRouter, useRoute } from "vue-router";
+import { useAuthStore } from "@/stores/auth";
 import api from "@/lib/api";
 import Breadcrumbs from "@/components/participation/Breadcrumbs.vue";
 
 const router = useRouter();
 const route = useRoute();
+
+const auth = useAuthStore();
+const isLoggedIn = computed(() => auth.isAuthed);
+
+onMounted(() => {
+  if (auth.isAuthed && auth.user?.name) {
+    author.value = auth.user.name;
+  }
+});
+
 const boardKey = computed(() => String(route.params.boardKey || ""));
 const breadcrumbs = [
   { title: "HOME", to: "/" },
@@ -226,7 +242,7 @@ const emailDomainOptions = [
 const title = ref("");
 const content = ref("");
 const files = ref([]);
-const agree = ref(false);
+const agree = ref(true);
 
 const formRef = ref(null);
 
@@ -273,7 +289,9 @@ async function onSubmit() {
     content: content.value,
     agree: agree.value,
     files: files.value,
-    ...(isPraise.value ? { password: password.value } : {}),
+    ...(isPraise.value && !isLoggedIn.value
+      ? { password: password.value }
+      : {}),
   };
 
   // TODO: call your API here

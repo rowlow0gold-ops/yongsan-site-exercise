@@ -5,6 +5,7 @@ export const useAuthStore = defineStore("auth", {
   state: () => ({
     accessToken: localStorage.getItem("accessToken") || "",
     user: JSON.parse(localStorage.getItem("authUser") || "null"),
+    refreshDisabled: false, // ✅ add
 
     expiresAtMs: (s) => getJwtExpMs(s.accessToken), // timestamp (ms) or null
 
@@ -22,6 +23,7 @@ export const useAuthStore = defineStore("auth", {
 
   actions: {
     setAuth({ accessToken, user }) {
+      this.refreshDisabled = false;
       this.accessToken = accessToken;
       this.user = user || null;
       localStorage.setItem("accessToken", accessToken);
@@ -38,6 +40,7 @@ export const useAuthStore = defineStore("auth", {
     clearAuth() {
       this.accessToken = "";
       this.user = null;
+      this.refreshDisabled = true; // ✅ block refresh attempts until next login
       localStorage.removeItem("accessToken");
       localStorage.removeItem("authUser");
     },

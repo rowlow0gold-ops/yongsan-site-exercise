@@ -50,6 +50,7 @@ import { ref, computed, onMounted, onUnmounted } from "vue";
 import LoginDialog from "@/components/auth/LoginDialog.vue";
 import { useRouter } from "vue-router";
 import { useAuthStore } from "@/stores/auth";
+import { logoutApi } from "@/api/auth";
 
 const router = useRouter();
 const auth = useAuthStore();
@@ -107,12 +108,20 @@ const jwtLeftText = computed(() => {
   return `JWT: ${formatMs(left)}`;
 });
 
-function handleAuthClick() {
-  if (auth.isAuthed) {
-    auth.clearAuth(); // logout
-    router.push("/"); // optional redirect
-  } else {
-    loginOpen.value = true; // open login dialog
+async function handleAuthClick() {
+  if (!auth.isAuthed) {
+    loginOpen.value = true;
+    return;
+  }
+
+  try {
+    await logoutApi(); // ✅ revoke refresh token + clear refresh cookie on server
+  } catch (e) {
+    // even if server fails, still clear local state
+    console.error(e);
+  } finally {
+    auth.clearAuth(); // ✅ clear access token + user
+    router.push("/");
   }
 }
 

@@ -1,9 +1,12 @@
 // src/router/index.js
 import { createRouter, createWebHistory } from "vue-router";
 import { h } from "vue";
+import api from "@/lib/api";
 import { useAuthStore } from "@/stores/auth";
 
 import Home from "@/views/Home.vue";
+
+import { useAlert } from "@/composables/useAlert"; // adjust path if needed
 
 // ✅ Shared layout for participation/boards
 const ParticipationLayout = () => import("@/layouts/ParticipationLayout.vue");
@@ -156,13 +159,63 @@ const router = createRouter({
   },
 });
 
-router.beforeEach((to) => {
+router.beforeEach(async (to) => {
   const auth = useAuthStore();
+  const { open } = useAlert();
 
-  // If route requires auth and user is not logged in → go home (or open login)
-  if (to.meta?.requiresAuth && !auth.isAuthed) {
-    return { path: "/", query: { login: "1", redirect: to.fullPath } };
+  const boardKey = String(to.params?.boardKey || "");
+  const id = to.params?.id;
+
+  const isBoard2Protected =
+    boardKey === "board2" &&
+    (to.name === "boardDetail" ||
+      to.name === "boardEdit" ||
+      to.name === "boardWrite");
+
+  // ✅ board2: detail/edit/write requires login
+  if (isBoard2Protected && !auth.isAuthed) {
+    open("로그인이 필요합니다.", "error", 2000);
+    return { path: "/" };
   }
-});
 
+  // ✅ board1 edit requires login + owner check (only for member posts)
+  const isBoard1Edit = boardKey === "board1" && to.name === "boardEdit";
+
+  if (isBoard1Edit) {
+    if (!auth.isAuthed) {
+      open("로그인이 필요합니다.", "error", 2000);
+      return { path: "/" };
+    }
+
+    try {
+      // IMPORTANT: use backend baseURL axios instance
+      const res = await api.get(`/api/boards/board1/posts/${id}`);
+      const post = res.data;
+
+      // If it's a member post, only owner can edit
+      if (post.authorUserId != null) {
+        const ownerId = Number(post.authorUserId);
+        const myId = Number(auth.user?.id);
+
+        if (!myId || ownerId !== myId) {
+          open("작성자만 수정할 수 있습니다.", "error", 2000);
+          return { path: "/" };
+        }
+      }
+      // If it's a guest post (authorUserId == null), allow entering edit page.
+      // Your edit page will require password via sessionStorage anyway.
+    } catch (e) {
+      open("접근할 수 없습니다.", "error", 2000);
+      return { path: "/" };
+    }
+  }
+
+  // existing requiresAuth rule
+  if (to.meta?.requiresAuth && !auth.isAuthed) {
+    open("로그인이 필요합니다.", "error", 2000);
+    return { path: "/" };
+  }
+
+  return true;
+});
 export default router;

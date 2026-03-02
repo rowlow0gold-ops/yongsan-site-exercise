@@ -16,8 +16,14 @@
         <v-stepper-window-item :value="1">
           <v-checkbox v-model="agreeAll" label="전체 동의" />
           <v-checkbox v-model="agreeTerms" label="이용약관 동의 (필수)" />
-          <v-checkbox v-model="agreePrivacy" label="개인정보 처리방침 동의 (필수)" />
-          <v-checkbox v-model="agreeMarketing" label="마케팅 수신 동의 (선택)" />
+          <v-checkbox
+            v-model="agreePrivacy"
+            label="개인정보 처리방침 동의 (필수)"
+          />
+          <v-checkbox
+            v-model="agreeMarketing"
+            label="마케팅 수신 동의 (선택)"
+          />
 
           <div class="d-flex justify-end mt-6">
             <v-btn color="primary" :disabled="!canGoStep2" @click="step = 2">
@@ -30,21 +36,44 @@
         <v-stepper-window-item :value="2">
           <v-row>
             <v-col cols="12" md="6">
-              <v-text-field v-model="form.name" label="이름" variant="outlined" />
+              <v-text-field
+                v-model="form.name"
+                label="이름"
+                variant="outlined"
+              />
             </v-col>
             <v-col cols="12" md="6">
-              <v-text-field v-model="form.email" label="이메일" type="email" variant="outlined" />
+              <v-text-field
+                v-model="form.email"
+                label="이메일"
+                type="email"
+                variant="outlined"
+              />
             </v-col>
             <v-col cols="12" md="6">
-              <v-text-field v-model="form.password" label="비밀번호" type="password" variant="outlined" />
+              <v-text-field
+                v-model="form.password"
+                label="비밀번호"
+                type="password"
+                variant="outlined"
+              />
             </v-col>
             <v-col cols="12" md="6">
-              <v-text-field v-model="form.password2" label="비밀번호 확인" type="password" variant="outlined" />
+              <v-text-field
+                v-model="form.password2"
+                label="비밀번호 확인"
+                type="password"
+                variant="outlined"
+              />
             </v-col>
           </v-row>
 
           <v-alert
-            v-if="form.password && form.password2 && form.password !== form.password2"
+            v-if="
+              form.password &&
+              form.password2 &&
+              form.password !== form.password2
+            "
             type="warning"
             variant="tonal"
             class="mt-2"
@@ -76,47 +105,61 @@
 </template>
 
 <script setup>
-import { computed, reactive, ref, watch } from "vue"
-import { useRouter, useRoute } from "vue-router"
+import { computed, reactive, ref, watch } from "vue";
+import { useRouter, useRoute } from "vue-router";
+import { signupApi, loginApi } from "@/api/auth";
+import { useAuthStore } from "@/stores/auth";
+const auth = useAuthStore();
 
-const router = useRouter()
-const route = useRoute()
+const router = useRouter();
+const route = useRoute();
 
 // ✅ step sync with left sidebar via query (?step=1/2/3)
-const step = ref(Number(route.query.step || 1))
+const step = ref(Number(route.query.step || 1));
 
 watch(step, (v) => {
-  router.replace({ query: { ...route.query, step: String(v) } })
-})
+  router.replace({ query: { ...route.query, step: String(v) } });
+});
 
-const agreeAll = ref(false)
-const agreeTerms = ref(false)
-const agreePrivacy = ref(false)
-const agreeMarketing = ref(false)
+const agreeAll = ref(false);
+const agreeTerms = ref(false);
+const agreePrivacy = ref(false);
+const agreeMarketing = ref(false);
 
 watch(agreeAll, (v) => {
-  agreeTerms.value = v
-  agreePrivacy.value = v
-  agreeMarketing.value = v
-})
+  agreeTerms.value = v;
+  agreePrivacy.value = v;
+  agreeMarketing.value = v;
+});
 
-const canGoStep2 = computed(() => agreeTerms.value && agreePrivacy.value)
+const canGoStep2 = computed(() => agreeTerms.value && agreePrivacy.value);
 
 const form = reactive({
   name: "",
   email: "",
   password: "",
   password2: "",
-})
+});
 
 const canFinish = computed(() => {
-  if (!form.name || !form.email || !form.password || !form.password2) return false
-  return form.password === form.password2
-})
+  if (!form.name || !form.email || !form.password || !form.password2)
+    return false;
+  return form.password === form.password2;
+});
 
-function finishSignup() {
-  // UI-only: later replace with axios call
-  localStorage.setItem("signup_preview", JSON.stringify({ ...form }))
-  step.value = 3
+async function finishSignup() {
+  try {
+    // 1) signup
+    await signupApi(form.name, form.email, form.password);
+
+    // 2) auto login (optional but nice)
+    const res = await loginApi(form.email, form.password);
+    auth.setAuth(res.data); // expects { accessToken, user }
+
+    step.value = 3;
+  } catch (e) {
+    console.error(e);
+    alert(e?.response?.data?.message || "회원가입 실패");
+  }
 }
 </script>

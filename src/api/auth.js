@@ -19,3 +19,7 @@ export function logoutApi() {
 export function meApi() {
   return api.get("/auth/me");
 }
+
+export function signupApi(name, email, password) {
+  return api.post("/auth/signup", { name, email, password });
+}

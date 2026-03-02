@@ -74,7 +74,6 @@
 
 <script setup>
 import { computed, ref } from "vue";
-import api from "@/lib/api";
 import { useAuthStore } from "@/stores/auth";
 import { loginApi } from "@/api/auth";
 

@@ -43,9 +43,17 @@
     </div>
     <div class="d-flex align-center ga-2">
       <!-- Left group -->
-      <v-btn color="primary" variant="flat" @click="onEditClick"> 수정 </v-btn>
+      <v-btn
+        v-if="canModify"
+        color="primary"
+        variant="flat"
+        @click="onEditClick"
+      >
+        수정
+      </v-btn>
 
       <v-btn
+        v-if="canModify"
         color="error"
         variant="outlined"
         :loading="deleting"
@@ -94,6 +102,13 @@
 import { computed, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { fetchBoardDetail, deleteBoardPost } from "@/api/board"; // ✅ use your API helper
+import { useAuthStore } from "@/stores/auth";
+
+const auth = useAuthStore();
+
+const isMemberPost = computed(() => {
+  return post.value.authorUserId !== null;
+});
 
 const route = useRoute();
 const router = useRouter();
@@ -106,6 +121,20 @@ const pwAction = ref("delete"); // "delete" | "edit"
 const pwError = ref("");
 
 const isPraise = computed(() => boardKey.value === "board1");
+
+const isOwner = computed(() => {
+  if (!auth.isAuthed) return false;
+  if (!post.value.authorUserId) return false;
+  return auth.user?.id === post.value.authorUserId;
+});
+
+const canModify = computed(() => {
+  // board1 guest post → allow (password popup)
+  if (isPraise.value && post.value.authorUserId == null) return true;
+
+  // member post → only owner
+  return isOwner.value;
+});
 
 async function confirmPw() {
   if (!validatePw()) return;
@@ -147,6 +176,14 @@ function onDeleteClick() {
   //   if (!ok) return;
 
   if (!isPraise.value) return onDeleteNoPw();
+
+  // board1 logic:
+  if (isMemberPost.value) {
+    // member post → no password
+    return onDeleteNoPw();
+  }
+
+  // guest post → password required
   openPwDialog("delete");
 }
 
@@ -173,7 +210,12 @@ function validatePw() {
 }
 
 function onEditClick() {
-  if (!isPraise.value) return goEdit(); // other boards: no password
+  if (!isPraise.value) return goEdit();
+
+  if (isMemberPost.value) {
+    return goEdit();
+  }
+
   openPwDialog("edit");
 }
 
@@ -218,14 +260,16 @@ function normalizeDetail(p) {
     title: p.title ?? "-",
     author: p.author ?? "-",
     createdAt: toYmd(p.createdAt ?? p.created_at),
-    views: p.views ?? 0, // if not in backend yet -> 0
-    attachments: p.attachments ?? [], // you don’t have it yet -> []
-    // your template expects array of paragraphs:
+    views: p.views ?? 0,
+    attachments: p.attachments ?? [],
     content: Array.isArray(p.content)
       ? p.content
       : String(p.content ?? "")
           .split("\n")
           .filter(Boolean),
+
+    // 👇 add this
+    authorUserId: p.authorUserId ?? null,
   };
 }
 
@@ -252,6 +296,17 @@ async function loadDetail() {
     post.value = normalizeDetail(res.data);
   } catch (e) {
     console.error(e);
+
+    const status = e?.response?.status;
+    if (boardKey.value === "board2" && (status === 401 || status === 403)) {
+      errorMsg.value = "로그인이 필요합니다.";
+      post.value = {
+        ...post.value,
+        content: ["로그인 후 내용을 확인할 수 있습니다."],
+      };
+      return;
+    }
+
     errorMsg.value = `Post not found (boardKey=${boardKey.value}, id=${id.value})`;
     post.value = {
       title: errorMsg.value,

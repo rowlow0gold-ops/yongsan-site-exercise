@@ -43,7 +43,7 @@ api.interceptors.response.use(
     const status = err?.response?.status;
     const original = err.config;
 
-    if (status === 401 && original && !original._retry) {
+    if ((status === 401 || status === 403) && original && !original._retry) {
       original._retry = true;
 
       if (isRefreshing) {
@@ -59,7 +59,12 @@ api.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const auth = useAuthStore(pinia); // ✅ IMPORTANT
+        const auth = useAuthStore(pinia);
+        if (auth.refreshDisabled) {
+          // user explicitly logged out -> don't refresh
+          window.location.href = "/?login=1";
+          return Promise.reject(err);
+        }
 
         const { data } = await refreshClient.post("/auth/refresh");
         const newToken = data.accessToken;
