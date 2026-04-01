@@ -37,7 +37,8 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           command_timeout: 5m
-                                                                                       u rowlow0gold-ops --password-stdin
-                   pull ghcr.io/rowl            yo           end:latest
+          script: |
+            echo ${{ secrets.GHCR_TOKEN }} | docker login ghcr.io -u rowlow0gold-ops --password-stdin
+            docker pull ghcr.io/rowlow0gold-ops/yongsan-frontend:latest
             cd ~
             docker compose up --detach
