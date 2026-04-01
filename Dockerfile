@@ -3,6 +3,7 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm install
 COPY . .
+RUN echo "VITE_API_BASE_URL=https://minhojan-world.site" > .env
 RUN npm run build
 
 FROM nginx:alpine
