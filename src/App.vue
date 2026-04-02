@@ -33,6 +33,9 @@ import Nav from "./components/Nav.vue";
 import Footer from "./components/Footer.vue";
 import { ref, onMounted, onBeforeUnmount } from "vue";
 import { useAlert } from "@/composables/useAlert";
+import { useRouter, useRoute } from "vue-router";
+import { useAuthStore } from "@/stores/auth";
+import { meApi } from "@/api/auth";
 
 const { show, message, color, close } = useAlert();
 
@@ -75,11 +78,29 @@ function scrollToTop() {
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
-onMounted(() => {
-  close(); // ✅ always start closed
+onMounted(async () => {
+  close();
   window.addEventListener("scroll", onScroll, { passive: true });
   window.addEventListener("resize", onScroll);
-  onScroll(); // init
+  onScroll();
+
+  // Handle OAuth2 redirect token
+  const route = useRoute();
+  const token = route.query.token;
+  if (token) {
+    const authStore = useAuthStore();
+    authStore.setAccessToken(token);
+    // Get user info
+    try {
+      const res = await meApi();
+      authStore.setAuth({ accessToken: token, user: res.data });
+    } catch (e) {
+      console.error("Failed to get user info", e);
+    }
+    // Remove token from URL
+    const router = useRouter();
+    router.replace({ query: {} });
+  }
 });
 
 onBeforeUnmount(() => {
