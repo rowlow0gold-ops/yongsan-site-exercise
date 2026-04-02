@@ -1,5 +1,5 @@
 <template>
-  <v-dialog v-model="model" max-width="420">
+  <v-dialog v-model="model" max-width="420" persistent>
     <v-card rounded="xl" class="pa-6">
       <div class="d-flex align-center justify-space-between mb-4">
         <v-btn icon variant="text" @click="model = false">
@@ -58,7 +58,7 @@
         Google로 로그인
       </v-btn>
 
-      <v-btn
+      <!-- <v-btn
         block
         class="mb-4"
         variant="flat"
@@ -67,7 +67,7 @@
       >
         <v-icon class="mr-2">mdi-chat</v-icon>
         카카오로 로그인
-      </v-btn>
+      </v-btn> -->
     </v-card>
   </v-dialog>
 </template>
