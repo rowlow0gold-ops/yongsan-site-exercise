@@ -31,7 +31,7 @@ import TopBanner from "./components/TopBanner.vue";
 import UtilBar from "./components/UtilBar.vue";
 import Nav from "./components/Nav.vue";
 import Footer from "./components/Footer.vue";
-import { ref, onMounted, onBeforeUnmount } from "vue";
+import { ref, onMounted, onBeforeUnmount, watch } from "vue";
 import { useAlert } from "@/composables/useAlert";
 import { useRouter, useRoute } from "vue-router";
 import { useAuthStore } from "@/stores/auth";
@@ -85,26 +85,31 @@ onMounted(async () => {
   window.addEventListener("scroll", onScroll, { passive: true });
   window.addEventListener("resize", onScroll);
   onScroll();
-
-  // Handle OAuth2 redirect token
-  const token = route.query.token; // ← use route directly
-  if (token) {
-    const authStore = useAuthStore();
-    authStore.setAccessToken(token);
-    try {
-      const res = await meApi();
-      authStore.setAuth({ accessToken: token, user: res.data });
-    } catch (e) {
-      console.error("Failed to get user info", e);
-    }
-    router.replace({ query: {} }); // ← use router directly
-  }
 });
 
 onBeforeUnmount(() => {
   window.removeEventListener("scroll", onScroll);
   window.removeEventListener("resize", onScroll);
 });
+
+// Add this after const route = useRoute();
+watch(
+  () => route.query.token,
+  async (token) => {
+    if (token) {
+      const authStore = useAuthStore();
+      authStore.setAccessToken(token);
+      try {
+        const res = await meApi();
+        authStore.setAuth({ accessToken: token, user: res.data });
+      } catch (e) {
+        console.error("Failed to get user info", e);
+      }
+      router.replace({ query: {} });
+    }
+  },
+  { immediate: true },
+);
 </script>
 
 <style>
