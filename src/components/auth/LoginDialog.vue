@@ -128,7 +128,7 @@ async function login() {
 }
 
 function social(provider) {
-  window.location.href = `https://minhojan-world.site/oauth2/authorization/${provider}`;
+  window.location.href = `https://minhojan-world.site/oauth2/authorization/google`;
 }
 
 function goSignup() {
