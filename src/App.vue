@@ -38,6 +38,8 @@ import { useAuthStore } from "@/stores/auth";
 import { meApi } from "@/api/auth";
 
 const { show, message, color, close } = useAlert();
+const router = useRouter(); // ← move here
+const route = useRoute(); // ← move here
 
 const isSticky = ref(false);
 const stickySentinel = ref(null);
@@ -85,21 +87,17 @@ onMounted(async () => {
   onScroll();
 
   // Handle OAuth2 redirect token
-  const route = useRoute();
-  const token = route.query.token;
+  const token = route.query.token; // ← use route directly
   if (token) {
     const authStore = useAuthStore();
     authStore.setAccessToken(token);
-    // Get user info
     try {
       const res = await meApi();
       authStore.setAuth({ accessToken: token, user: res.data });
     } catch (e) {
       console.error("Failed to get user info", e);
     }
-    // Remove token from URL
-    const router = useRouter();
-    router.replace({ query: {} });
+    router.replace({ query: {} }); // ← use router directly
   }
 });
 
