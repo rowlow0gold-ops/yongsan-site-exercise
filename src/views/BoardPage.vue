@@ -25,6 +25,7 @@
     :md-and-up="mdAndUp"
     :headers="headers"
     :items="items"
+    :loading="loading"
     :page="page"
     :page-count="pageCount"
     @update:page="onPage"

@@ -5,6 +5,8 @@
         <v-data-table
           :headers="headers"
           :items="items"
+          :loading="loading"
+          loading-text="불러오는 중..."
           item-value="id"
           class="board1-table"
           density="comfortable"
@@ -115,6 +117,7 @@ defineProps({
   items: { type: Array, default: () => [] },
   page: { type: Number, default: 1 },
   pageCount: { type: Number, default: 1 },
+  loading: { type: Boolean, default: false }, // ← ADD
 });
 
 defineEmits(["update:page"]);

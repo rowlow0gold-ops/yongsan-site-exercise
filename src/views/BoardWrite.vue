@@ -214,12 +214,18 @@ onMounted(() => {
 });
 
 const boardKey = computed(() => String(route.params.boardKey || ""));
-const breadcrumbs = [
+
+// ✅ Dynamic breadcrumb title
+const boardTitle = computed(() =>
+  boardKey.value === "board2" ? "나도한마디" : "칭찬합시다",
+);
+
+const breadcrumbs = computed(() => [
   { title: "HOME", to: "/" },
   { title: "참여소통" },
   { title: "구민의견/참여" },
-  { title: "칭찬합시다", disabled: true },
-];
+  { title: boardTitle.value, disabled: true },
+]);
 
 const author = ref("무명");
 const visibility = ref("PUBLIC");
@@ -267,7 +273,7 @@ function onEmailDomainModeChange(mode) {
 }
 
 const goList = () => {
-  router.replace("/board1");
+  router.replace(`/${boardKey.value}`);
 };
 
 async function onSubmit() {
