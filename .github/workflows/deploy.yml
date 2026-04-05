@@ -44,6 +44,8 @@ jobs:
           tags: ghcr.io/rowlow0gold-ops/yongsan-frontend:test
           build-args: |
             VITE_API_BASE_URL=https://test.minhojan-world.site
+            VITE_SENTRY_DSN=${{ secrets.VITE_SENTRY_DSN }}
+            VITE_WEATHER_API_KEY=${{ secrets.VITE_WEATHER_API_KEY }}
 
   build-prod:
     needs: test
@@ -69,6 +71,8 @@ jobs:
           tags: ghcr.io/rowlow0gold-ops/yongsan-frontend:latest
           build-args: |
             VITE_API_BASE_URL=https://minhojan-world.site
+            VITE_SENTRY_DSN=${{ secrets.VITE_SENTRY_DSN }}
+            VITE_WEATHER_API_KEY=${{ secrets.VITE_WEATHER_API_KEY }}
 
   deploy-test:
     needs: build-test
