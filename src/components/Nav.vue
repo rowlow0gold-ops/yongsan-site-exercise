@@ -98,7 +98,7 @@
   </v-dialog>
 
   <!-- ✅ Mobile LoginDialog -->
-  <LoginDialog v-model="mobileLoginOpen" />
+  <LoginDialog v-model="mobileLoginOpen" @success="open('로그인 되었습니다.', 'success')" />
 
   <!-- ✅ Desktop popup (lg and up) -->
   <MenuPopup
@@ -142,7 +142,10 @@ import MenuPopup from "./MenuPopup.vue";
 import LoginDialog from "@/components/auth/LoginDialog.vue";
 import { useRouter, useRoute } from "vue-router";
 import { useAuthStore } from "@/stores/auth";
+import { useAlert } from "@/composables/useAlert";
 import { logoutApi } from "@/api/auth";
+
+const { open } = useAlert();
 
 const router = useRouter();
 const route = useRoute();
@@ -191,6 +194,7 @@ async function handleMobileAuth() {
   } finally {
     auth.clearAuth();
     isDesktopMenuOpen.value = false;
+    open("로그아웃 되었습니다.", "success");
     router.push("/");
   }
 }

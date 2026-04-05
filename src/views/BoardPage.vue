@@ -33,11 +33,12 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref, watch } from "vue";
+import { computed, onMounted, onActivated, reactive, ref, watch } from "vue";
 import { useDisplay } from "vuetify";
 import FiltersCard from "@/components/board/FiltersCard.vue";
 import BoardTable from "@/components/board/BoardTable.vue";
 import { fetchBoardList } from "@/api/board";
+import { useAlert } from "@/composables/useAlert";
 
 const props = defineProps({
   boardKey: { type: String, required: true },
@@ -45,6 +46,7 @@ const props = defineProps({
 });
 
 const { mdAndUp } = useDisplay();
+const { open } = useAlert();
 
 const filters = reactive({ field: "title", q: "" });
 
@@ -74,6 +76,7 @@ function mapPost(p) {
     views: p.views ?? 0,
     visibility: p.visibility ?? "PUBLIC",
     authorUserId: p.authorUserId ?? null,
+    guestPost: p.guestPost ?? false,
   };
 }
 
@@ -120,6 +123,10 @@ async function load() {
     if (typeof data.total === "number") total.value = data.total;
     else if (typeof data.count === "number") total.value = data.count;
 
+    if (filters.q?.trim() && items.value.length === 0) {
+      open("검색 결과가 없습니다.", "info");
+    }
+
     // ✅ if total changed and current page is now out of range, clamp and reload once
     if (page.value > pageCount.value) {
       page.value = pageCount.value;
@@ -143,6 +150,10 @@ function onPage(p) {
 }
 
 function apply() {
+  if (!filters.q?.trim()) {
+    open("검색어를 입력해주세요.", "warning");
+    return;
+  }
   page.value = 1;
   load();
 }
@@ -155,6 +166,7 @@ function reset() {
 }
 
 onMounted(load);
+onActivated(load);
 
 watch(
   () => props.boardKey,

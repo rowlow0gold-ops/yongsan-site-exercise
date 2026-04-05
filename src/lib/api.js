@@ -1,5 +1,6 @@
 import axios from "axios";
 import { useAuthStore } from "@/stores/auth";
+import { getJwtExpMs } from "@/lib/jwt";
 import pinia from "@/plugins/pinia";
 console.log("[api.js loaded] pinia=", pinia);
 const baseURL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
@@ -15,13 +16,17 @@ const refreshClient = axios.create({
 });
 
 api.interceptors.request.use((config) => {
-  const auth = useAuthStore(pinia); // or useAuthStore() if you use active pinia
-  console.log("[api req] auth=", auth, "token=", auth?.accessToken);
-  const token = auth?.accessToken; // ✅ prevents crash even if undefined
+  const auth = useAuthStore(pinia);
+  const token = auth?.accessToken;
 
   if (token) {
-    config.headers = config.headers || {};
-    config.headers.Authorization = `Bearer ${token}`;
+    // Only send token if it's not expired
+    const exp = getJwtExpMs(token);
+    if (exp && exp > Date.now()) {
+      config.headers = config.headers || {};
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    // Expired token → don't send it, request goes as anonymous
   }
   return config;
 });
@@ -47,11 +52,15 @@ api.interceptors.response.use(
       original.url?.includes("/auth/signup") ||
       original.url?.includes("/auth/refresh");
 
+    // Only auto-refresh for GET requests — never silently re-auth on writes
+    const isSafeMethod = (original.method || "get").toLowerCase() === "get";
+
     if (
       status === 401 &&
       original &&
       !original._retry &&
-      !isAuthEndpoint
+      !isAuthEndpoint &&
+      isSafeMethod
     ) {
       original._retry = true;
 

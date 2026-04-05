@@ -213,8 +213,11 @@
 import { ref, onMounted, computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useAuthStore } from "@/stores/auth";
+import { useAlert } from "@/composables/useAlert";
 import Breadcrumbs from "@/components/participation/Breadcrumbs.vue";
 import api from "@/lib/api";
+
+const { open } = useAlert();
 
 const route = useRoute();
 const router = useRouter();
@@ -406,10 +409,11 @@ async function onSubmit() {
   try {
     await api.put(`/api/boards/${boardKey.value}/posts/${id.value}`, payload);
     sessionStorage.removeItem(pwKey.value);
+    open("게시글이 수정되었습니다.", "success");
     goDetail();
   } catch (e) {
     console.error(e);
-    alert("Update failed.");
+    open("수정에 실패했습니다.", "error");
   } finally {
     saving.value = false;
   }
