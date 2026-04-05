@@ -83,16 +83,6 @@ const route = useRoute(); // ✅ OPTIONAL (for "already on same page" check)
 
 const MENU = [
   {
-    label: "종합민원",
-    desc: "신속하고 편리한 민원처리",
-    children: [
-      { label: "종합민원안내" },
-      { label: "종합민원신고상담" },
-      { label: "부패공익신고" },
-      { label: "용산구 옴부즈만" },
-    ],
-  },
-  {
     label: "참여소통",
     desc: "구민 참여와 소통",
     children: [
@@ -103,36 +93,6 @@ const MENU = [
           { id: "how", label: "나도한마디", to: "/board2" },
         ],
       },
-      { label: "적극행정" },
-      { label: "주민참여예산제" },
-    ],
-  },
-  {
-    label: "행정정보",
-    desc: "구정 운영 및 공개",
-    children: [
-      { label: "구정운영" },
-      { label: "정보공개청구" },
-      { label: "계약정보" },
-    ],
-  },
-  {
-    label: "용산소개",
-    desc: "용산구 안내",
-    children: [
-      { label: "용산구안내" },
-      { label: "구정소식" },
-      { label: "관내시설" },
-    ],
-  },
-  {
-    label: "분야별 정보",
-    desc: "생활 분야 정보",
-    children: [
-      { label: "문화/관광" },
-      { label: "복지" },
-      { label: "부동산/토지" },
-      { label: "교통" },
     ],
   },
 ];

@@ -1,13 +1,13 @@
 <template>
   <v-app>
-<component
-  :is="sidebarComponent"
-  v-model="drawer"
-  :md-and-up="mdAndUp"
-  :active-route-name="route.name"
-  :step="signupStep"
-  @go="onGo"
-/>
+    <component
+      :is="sidebarComponent"
+      v-model="drawer"
+      :md-and-up="mdAndUp"
+      :active-route-name="route.name"
+      :step="signupStep"
+      @go="onGo"
+    />
     <TopBar :md-and-up="mdAndUp" v-model="drawer" :title="layoutTitle">
       <template #subtitle>
         <Breadcrumbs :items="breadcrumbs" />
@@ -44,22 +44,28 @@ const { mdAndUp } = useDisplay();
 
 const drawer = ref(true);
 
-const signupStep = computed(() => Number(route.query.step || 1))
+const signupStep = computed(() => Number(route.query.step || 1));
 
-/**
- * If you want different title/breadcrumbs per page,
- * you can control them by route.meta in router config.
- */
-const layoutTitle = computed(() => route.meta?.title || "칭찬합시다");
 const breadcrumbs = computed(() => {
   return (
     route.meta?.breadcrumbs || [
       { label: "HOME" },
       { label: "참여소통" },
       { label: "구민의견/참여" },
-      { label: "칭찬합시다" },
+      { label: layoutTitle.value },
     ]
   );
+});
+
+const boardKeyTitles = {
+  board1: "칭찬합시다",
+  board2: "나도한마디",
+};
+
+const layoutTitle = computed(() => {
+  if (route.meta?.title) return route.meta.title;
+  const boardKey = String(route.params?.boardKey || "");
+  return boardKeyTitles[boardKey] || "참여소통";
 });
 
 function onGo(payload) {
@@ -67,12 +73,9 @@ function onGo(payload) {
   router.push(payload);
 }
 
-
 const sidebarComponent = computed(() => {
   return route.meta?.sidebar === "signupSteps" ? SignupStepsSidebar : SideNav;
 });
-
-
 </script>
 
 <style scoped>

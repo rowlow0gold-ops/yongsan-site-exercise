@@ -41,16 +41,7 @@ const router = createRouter({
           path: "board/:boardKey/write",
           name: "boardWrite",
           component: BoardWrite,
-          meta: {
-            title: "칭찬합시다",
-            breadcrumbs: [
-              { label: "HOME" },
-              { label: "참여소통" },
-              { label: "구민의견/참여" },
-              { label: "칭찬합시다" },
-              { label: "글쓰기" },
-            ],
-          },
+          meta: {},
         },
 
         // ✅ NEW: put "edit" BEFORE ":id" so it doesn't get captured as :id
@@ -59,17 +50,7 @@ const router = createRouter({
           name: "boardEdit",
           component: BoardEdit,
           props: true,
-          meta: {
-            title: "칭찬합시다",
-            breadcrumbs: [
-              { label: "HOME" },
-              { label: "참여소통" },
-              { label: "구민의견/참여" },
-              { label: "구민의견/참여" },
-              { label: "칭찬합시다" },
-              { label: "수정" },
-            ],
-          },
+          meta: {},
         },
 
         {
@@ -77,16 +58,7 @@ const router = createRouter({
           name: "boardDetail",
           component: BoardDetail,
           props: true,
-          meta: {
-            title: "칭찬합시다",
-            breadcrumbs: [
-              { label: "HOME" },
-              { label: "참여소통" },
-              { label: "구민의견/참여" },
-              { label: "칭찬합시다" },
-              { label: "상세" },
-            ],
-          },
+          meta: {},
         },
 
         {

@@ -5,6 +5,8 @@
         <v-data-table
           :headers="headers"
           :items="items"
+          :loading="loading"
+          loading-text="불러오는 중..."
           item-value="id"
           class="board1-table"
           density="comfortable"
@@ -12,7 +14,7 @@
         >
           <template #item.title="{ item }">
             <div class="d-flex align-center ga-2">
-              <v-icon size="18" class="text-medium-emphasis">mdi-lock</v-icon>
+              <v-icon v-if="item.visibility === 'PRIVATE'" size="18" class="text-medium-emphasis">mdi-lock</v-icon>
               <RouterLink
                 class="text-decoration-none text-high-emphasis"
                 :to="{
@@ -43,7 +45,7 @@
           <div v-for="item in items" :key="item.id" class="py-4">
             <div class="d-flex align-center ga-2">
               <div class="text-subtitle-1 font-weight-bold">{{ item.id }}</div>
-              <v-icon size="18" class="text-medium-emphasis">mdi-lock</v-icon>
+              <v-icon v-if="item.visibility === 'PRIVATE'" size="18" class="text-medium-emphasis">mdi-lock</v-icon>
               <RouterLink
                 class="text-decoration-none text-high-emphasis"
                 :to="{
@@ -115,6 +117,7 @@ defineProps({
   items: { type: Array, default: () => [] },
   page: { type: Number, default: 1 },
   pageCount: { type: Number, default: 1 },
+  loading: { type: Boolean, default: false }, // ← ADD
 });
 
 defineEmits(["update:page"]);

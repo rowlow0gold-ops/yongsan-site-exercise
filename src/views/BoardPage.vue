@@ -25,6 +25,7 @@
     :md-and-up="mdAndUp"
     :headers="headers"
     :items="items"
+    :loading="loading"
     :page="page"
     :page-count="pageCount"
     @update:page="onPage"
@@ -71,6 +72,8 @@ function mapPost(p) {
     author: p.author,
     date: toYmd(p.createdAt ?? p.created_at ?? p.date),
     views: p.views ?? 0,
+    visibility: p.visibility ?? "PUBLIC",
+    authorUserId: p.authorUserId ?? null,
   };
 }
 
