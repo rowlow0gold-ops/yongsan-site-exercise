@@ -42,7 +42,7 @@ const router = useRouter();
 const route = useRoute();
 const { mdAndUp } = useDisplay();
 
-const drawer = ref(true);
+const drawer = ref(mdAndUp.value);
 
 const signupStep = computed(() => Number(route.query.step || 1));
 
