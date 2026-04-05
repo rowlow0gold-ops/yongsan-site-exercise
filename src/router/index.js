@@ -140,42 +140,44 @@ router.beforeEach(async (to) => {
 
   const isBoard2Protected =
     boardKey === "board2" &&
-    (to.name === "boardDetail" ||
-      to.name === "boardEdit" ||
-      to.name === "boardWrite");
+    (to.name === "boardEdit" || to.name === "boardWrite");
 
-  // ✅ board2: detail/edit/write requires login
+  // ✅ board2: edit/write requires login
   if (isBoard2Protected && !auth.isAuthed) {
     open("로그인이 필요합니다.", "error", 2000);
     return { path: "/" };
+  }
+
+  // ✅ board2 detail: guest stays on list with alert
+  if (boardKey === "board2" && to.name === "boardDetail" && !auth.isAuthed) {
+    open("로그인이 필요합니다.", "error");
+    return false;
   }
 
   // ✅ board1 edit requires login + owner check (only for member posts)
   const isBoard1Edit = boardKey === "board1" && to.name === "boardEdit";
 
   if (isBoard1Edit) {
-    if (!auth.isAuthed) {
-      open("로그인이 필요합니다.", "error", 2000);
-      return { path: "/" };
-    }
-
     try {
-      // IMPORTANT: use backend baseURL axios instance
       const res = await api.get(`/api/boards/board1/posts/${id}`);
       const post = res.data;
 
-      // If it's a member post, only owner can edit
-      if (post.authorUserId != null) {
+      if (post.authorUserId) {
+        // Member post → require login + owner/admin check
+        if (!auth.isAuthed) {
+          open("로그인이 필요합니다.", "error", 2000);
+          return { path: "/" };
+        }
         const ownerId = Number(post.authorUserId);
         const myId = Number(auth.user?.id);
+        const isAdmin = auth.user?.role === "ADMIN";
 
-        if (!myId || ownerId !== myId) {
+        if (ownerId !== myId && !isAdmin) {
           open("작성자만 수정할 수 있습니다.", "error", 2000);
           return { path: "/" };
         }
       }
-      // If it's a guest post (authorUserId == null), allow entering edit page.
-      // Your edit page will require password via sessionStorage anyway.
+      // Guest post (no authorUserId) → allow, edit page handles password
     } catch (e) {
       open("접근할 수 없습니다.", "error", 2000);
       return { path: "/" };

@@ -27,7 +27,7 @@
           density="compact"
           hide-details
         />
-        <v-btn color="primary" height="40" @click="submitFeedback">
+        <v-btn color="primary" height="40" :loading="submitting" @click="submitFeedback">
           의견등록
         </v-btn>
       </div>
@@ -42,26 +42,43 @@
 
 <script setup>
 import { ref } from "vue";
+import { useRoute } from "vue-router";
 import { useAlert } from "@/composables/useAlert";
+import api from "@/lib/api";
 
 const { open } = useAlert();
+const route = useRoute();
 
 const rates = ["매우 만족", "만족", "보통", "불만", "매우 불만"];
 const selectedRate = ref(null);
 const feedback = ref("");
+const submitting = ref(false);
 
 function rate(label) {
   selectedRate.value = label;
-  console.log("rated:", label);
 }
 
-function submitFeedback() {
+async function submitFeedback() {
   if (feedback.value === "" && selectedRate.value === null) {
-    open("의견을 입력해주세요.", "warning");
+    open("만족도를 선택하거나 의견을 입력해주세요.", "warning");
     return;
   }
-  open("의견이 등록되었습니다", "success");
-  feedback.value = "";
-  selectedRate.value = null;
+
+  submitting.value = true;
+  try {
+    await api.post("/api/satisfaction", {
+      pagePath: route.fullPath,
+      rating: selectedRate.value || "보통",
+      feedback: feedback.value || null,
+    });
+    open("의견이 등록되었습니다.", "success");
+    feedback.value = "";
+    selectedRate.value = null;
+  } catch (e) {
+    console.error(e);
+    open("등록에 실패했습니다.", "error");
+  } finally {
+    submitting.value = false;
+  }
 }
 </script>

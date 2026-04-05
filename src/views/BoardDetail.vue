@@ -101,13 +101,16 @@
 <script setup>
 import { computed, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { fetchBoardDetail, deleteBoardPost } from "@/api/board"; // ✅ use your API helper
+import { fetchBoardDetail, deleteBoardPost } from "@/api/board";
 import { useAuthStore } from "@/stores/auth";
+import { useAlert } from "@/composables/useAlert";
+
+const { open } = useAlert();
 
 const auth = useAuthStore();
 
 const isMemberPost = computed(() => {
-  return post.value.authorUserId !== null;
+  return !!post.value.authorUserId;
 });
 
 const route = useRoute();
@@ -117,10 +120,11 @@ const deleting = ref(false);
 
 const pwDialog = ref(false);
 const pw = ref("");
-const pwAction = ref("delete"); // "delete" | "edit"
+const pwAction = ref("delete"); // "delete" | "edit" | "view"
 const pwError = ref("");
 
 const isPraise = computed(() => boardKey.value === "board1");
+const viewPassword = ref(""); // password used to unlock a private guest post
 
 const isOwner = computed(() => {
   if (!auth.isAuthed) return false;
@@ -128,29 +132,51 @@ const isOwner = computed(() => {
   return auth.user?.id === post.value.authorUserId;
 });
 
-const canModify = computed(() => {
-  // board1 guest post → allow (password popup)
-  if (isPraise.value && post.value.authorUserId == null) return true;
+const isAdmin = computed(() => auth.user?.role === "ADMIN");
 
-  // member post → only owner
-  return isOwner.value;
+const canModify = computed(() => {
+  if (isPraise.value) {
+    // guest post → anyone can (password required)
+    if (!post.value.authorUserId) return true;
+    // member post → owner or admin only
+    return isOwner.value || isAdmin.value;
+  }
+
+  // other boards → owner or admin
+  return isOwner.value || isAdmin.value;
 });
 
 async function confirmPw() {
   if (!validatePw()) return;
 
+  if (pwAction.value === "view") {
+    // Try loading the private post with password
+    try {
+      const res = await fetchBoardDetail(boardKey.value, id.value, pw.value);
+      post.value = normalizeDetail(res.data);
+      errorMsg.value = "";
+      viewPassword.value = pw.value; // remember for edit/delete
+      pwDialog.value = false;
+    } catch (e) {
+      pwError.value = "비밀번호가 올바르지 않습니다.";
+    }
+    return;
+  }
+
   // close dialog immediately for snappy UX
   pwDialog.value = false;
 
   if (pwAction.value === "delete") {
+    pwDialog.value = false;
+    if (!window.confirm("정말 삭제할까요?")) return;
     deleting.value = true;
     try {
-      // IMPORTANT: your delete API must accept password
       await deleteBoardPost(boardKey.value, id.value, pw.value);
+      open("게시글이 삭제되었습니다.", "success");
       router.replace(`/${boardKey.value}`);
     } catch (e) {
       console.error(e);
-      window.alert("비밀번호가 올바르지 않거나 삭제에 실패했습니다.");
+      open("비밀번호가 올바르지 않거나 삭제에 실패했습니다.", "error");
     } finally {
       deleting.value = false;
     }
@@ -172,18 +198,27 @@ function openPwDialog(action) {
 }
 
 function onDeleteClick() {
-  //   const ok = window.confirm("정말 삭제할까요?");
-  //   if (!ok) return;
-
-  if (!isPraise.value) return onDeleteNoPw();
-
-  // board1 logic:
-  if (isMemberPost.value) {
-    // member post → no password
+  if (!isPraise.value) {
+    if (!window.confirm("정말 삭제할까요?")) return;
     return onDeleteNoPw();
   }
 
-  // guest post → password required
+  // Admin can delete any post without password
+  if (isAdmin.value) {
+    if (!window.confirm("정말 삭제할까요?")) return;
+    return onDeleteNoPw();
+  }
+
+  if (isMemberPost.value) {
+    if (!auth.isAuthed) {
+      open("로그인이 필요합니다.", "error");
+      return;
+    }
+    if (!window.confirm("정말 삭제할까요?")) return;
+    return onDeleteNoPw();
+  }
+
+  // Guest post: password first, confirm after
   openPwDialog("delete");
 }
 
@@ -191,10 +226,11 @@ async function onDeleteNoPw() {
   deleting.value = true;
   try {
     await deleteBoardPost(boardKey.value, id.value);
+    open("게시글이 삭제되었습니다.", "success");
     router.replace(`/${boardKey.value}`);
   } catch (e) {
     console.error(e);
-    window.alert("삭제에 실패했습니다.");
+    open("삭제에 실패했습니다.", "error");
   } finally {
     deleting.value = false;
   }
@@ -212,7 +248,14 @@ function validatePw() {
 function onEditClick() {
   if (!isPraise.value) return goEdit();
 
+  // Admin can edit any post without password
+  if (isAdmin.value) return goEdit();
+
   if (isMemberPost.value) {
+    if (!auth.isAuthed) {
+      open("로그인이 필요합니다.", "error");
+      return;
+    }
     return goEdit();
   }
 
@@ -299,6 +342,25 @@ async function loadDetail() {
 
     const status = e?.response?.status;
     if (status === 403) {
+      const isGuestPrivate = e.response?.data?.guestPost === true;
+
+      if (isGuestPrivate) {
+        // Guest private post → offer password dialog
+        errorMsg.value = "비공개 게시글입니다.";
+        post.value = {
+          title: "비공개 게시글",
+          author: "-",
+          createdAt: "-",
+          views: 0,
+          attachments: [],
+          content: ["비밀번호를 입력하면 열람할 수 있습니다."],
+          authorUserId: null,
+        };
+        openPwDialog("view");
+        return;
+      }
+
+      // Member private post → login required, no password option
       errorMsg.value = "비공개 게시글입니다.";
       post.value = {
         title: "비공개 게시글",

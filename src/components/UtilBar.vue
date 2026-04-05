@@ -38,7 +38,7 @@
 
       </div>
     </v-container>
-    <LoginDialog v-model="loginOpen" @go-signup="goSignup" />
+    <LoginDialog v-model="loginOpen" @go-signup="goSignup" @success="onLoginSuccess" />
   </v-sheet>
 </template>
 
@@ -47,7 +47,10 @@ import { ref, computed, onMounted, onUnmounted } from "vue";
 import LoginDialog from "@/components/auth/LoginDialog.vue";
 import { useRouter } from "vue-router";
 import { useAuthStore } from "@/stores/auth";
+import { useAlert } from "@/composables/useAlert";
 import { logoutApi } from "@/api/auth";
+
+const { open } = useAlert();
 
 const router = useRouter();
 const auth = useAuthStore();
@@ -112,12 +115,12 @@ async function handleAuthClick() {
   }
 
   try {
-    await logoutApi(); // ✅ revoke refresh token + clear refresh cookie on server
+    await logoutApi();
   } catch (e) {
-    // even if server fails, still clear local state
     console.error(e);
   } finally {
-    auth.clearAuth(); // ✅ clear access token + user
+    auth.clearAuth();
+    open("로그아웃 되었습니다.", "success");
     router.push("/");
   }
 }
@@ -130,9 +133,7 @@ function goSignup() {
 const loginOpen = ref(false);
 
 function onLoginSuccess() {
-  // frontend-only for now: just close and optionally show a message
-  // dialog already closes itself in the component, so this can be empty.
-  // Later you can route to mypage or change header state.
+  open("로그인 되었습니다.", "success");
 }
 </script>
 

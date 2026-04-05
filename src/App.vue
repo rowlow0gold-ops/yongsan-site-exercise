@@ -37,7 +37,7 @@ import { useRouter, useRoute } from "vue-router";
 import { useAuthStore } from "@/stores/auth";
 import { meApi } from "@/api/auth";
 
-const { show, message, color, close } = useAlert();
+const { show, message, color, close, open } = useAlert();
 const router = useRouter(); // ← move here
 const route = useRoute(); // ← move here
 
@@ -102,8 +102,10 @@ watch(
       try {
         const res = await meApi();
         authStore.setAuth({ accessToken: token, user: res.data });
+        open("로그인 되었습니다.", "success");
       } catch (e) {
         console.error("Failed to get user info", e);
+        open("로그인에 실패했습니다.", "error");
       }
       router.replace({ query: {} });
     }

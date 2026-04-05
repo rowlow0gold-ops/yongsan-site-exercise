@@ -6,8 +6,9 @@ export function fetchBoardList(boardKey, params) {
 }
 
 // DETAIL
-export function fetchBoardDetail(boardKey, id) {
-  return api.get(`/api/boards/${boardKey}/posts/${id}`);
+export function fetchBoardDetail(boardKey, id, password) {
+  const params = password ? { password } : {};
+  return api.get(`/api/boards/${boardKey}/posts/${id}`, { params });
 }
 
 export function deleteBoardPost(boardKey, id, password) {

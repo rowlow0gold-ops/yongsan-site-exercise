@@ -26,6 +26,13 @@
               </RouterLink>
             </div>
           </template>
+
+          <template #item.author="{ item }">
+            <div class="d-flex align-center ga-1">
+              <span>{{ item.author }}</span>
+              <v-icon v-if="item.authorUserId" size="16" color="amber-darken-2" title="회원">mdi-star</v-icon>
+            </div>
+          </template>
         </v-data-table>
 
         <!-- ✅ Only show when needed + force numeric buttons -->
@@ -62,7 +69,7 @@
                 <span class="text-medium-emphasis" style="min-width: 64px"
                   >작성자</span
                 >
-                <span>{{ item.author }}</span>
+                <span class="d-flex align-center ga-1">{{ item.author }}<v-icon v-if="item.authorUserId" size="14" color="amber-darken-2" title="회원">mdi-star</v-icon></span>
               </div>
               <div class="d-flex ga-2 mt-1">
                 <span class="text-medium-emphasis" style="min-width: 64px"

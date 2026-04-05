@@ -198,8 +198,11 @@
 import { ref, computed, onMounted } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { useAuthStore } from "@/stores/auth";
+import { useAlert } from "@/composables/useAlert";
 import api from "@/lib/api";
 import Breadcrumbs from "@/components/participation/Breadcrumbs.vue";
+
+const { open } = useAlert();
 
 const router = useRouter();
 const route = useRoute();
@@ -300,11 +303,13 @@ async function onSubmit() {
       : {}),
   };
 
-  // TODO: call your API here
-  console.log("submit payload:", payload);
-  await api.post(`/api/boards/${boardKey.value}/posts`, payload);
-
-  // After success:
-  goList();
+  try {
+    await api.post(`/api/boards/${boardKey.value}/posts`, payload);
+    open("게시글이 등록되었습니다.", "success");
+    goList();
+  } catch (e) {
+    console.error(e);
+    open("등록에 실패했습니다.", "error");
+  }
 }
 </script>
