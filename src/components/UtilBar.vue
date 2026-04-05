@@ -36,9 +36,6 @@
           {{ auth.isAuthed ? "마이페이지" : "회원가입" }}
         </v-btn>
 
-        <v-btn variant="text" class="util-btn" prepend-icon="mdi-earth">
-          Language
-        </v-btn>
       </div>
     </v-container>
     <LoginDialog v-model="loginOpen" @go-signup="goSignup" />

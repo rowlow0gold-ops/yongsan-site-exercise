@@ -48,16 +48,12 @@
   <v-dialog v-model="isDesktopMenuOpen" fullscreen class="d-lg-none">
     <v-card>
       <div class="allmenu-top-icons d-flex align-center">
-        <v-btn icon variant="text" class="allmenu-icon-btn">
-          <v-icon icon="mdi-account" />
+        <v-btn icon variant="text" class="allmenu-icon-btn" @click="handleMobileAuth">
+          <v-icon :icon="auth.isAuthed ? 'mdi-logout' : 'mdi-account'" />
         </v-btn>
 
-        <v-btn icon variant="text" class="allmenu-icon-btn">
-          <v-icon icon="mdi-account-plus" />
-        </v-btn>
-
-        <v-btn icon variant="text" class="allmenu-icon-btn">
-          <v-icon icon="mdi-earth" />
+        <v-btn icon variant="text" class="allmenu-icon-btn" @click="goSignupOrMypage">
+          <v-icon :icon="auth.isAuthed ? 'mdi-account-check' : 'mdi-account-plus'" />
         </v-btn>
 
         <v-spacer />
@@ -101,6 +97,9 @@
     </v-card>
   </v-dialog>
 
+  <!-- ✅ Mobile LoginDialog -->
+  <LoginDialog v-model="mobileLoginOpen" />
+
   <!-- ✅ Desktop popup (lg and up) -->
   <MenuPopup
     v-if="isDesktopMenuOpen"
@@ -140,10 +139,15 @@ import { ref } from "vue";
 import logoUrl from "../assets/bi-new.jpg";
 import DesktopMenus from "./DesktopMenus.vue";
 import MenuPopup from "./MenuPopup.vue";
+import LoginDialog from "@/components/auth/LoginDialog.vue";
 import { useRouter, useRoute } from "vue-router";
+import { useAuthStore } from "@/stores/auth";
+import { logoutApi } from "@/api/auth";
 
 const router = useRouter();
 const route = useRoute();
+const auth = useAuthStore();
+const mobileLoginOpen = ref(false);
 
 defineProps({
   isSticky: { type: Boolean, default: false },
@@ -174,26 +178,33 @@ const goHome = async () => {
   }
 };
 
+async function handleMobileAuth() {
+  if (!auth.isAuthed) {
+    isDesktopMenuOpen.value = false;
+    mobileLoginOpen.value = true;
+    return;
+  }
+  try {
+    await logoutApi();
+  } catch (e) {
+    console.error(e);
+  } finally {
+    auth.clearAuth();
+    isDesktopMenuOpen.value = false;
+    router.push("/");
+  }
+}
+
+function goSignupOrMypage() {
+  isDesktopMenuOpen.value = false;
+  if (auth.isAuthed) {
+    router.push("/mypage");
+  } else {
+    router.push({ name: "signup", query: { step: 1 } });
+  }
+}
+
 const MOBILE_MENU = [
-  {
-    id: "m1",
-    label: "종합민원",
-    children: [
-      {
-        id: "m1-1",
-        label: "종합민원안내",
-        href: "",
-        children: [
-          { id: "m1-1-1", label: "민원 절차 안내", href: "" },
-          { id: "m1-1-2", label: "민원 처리 기준", href: "" },
-          { id: "m1-1-3", label: "민원 서식", href: "" },
-        ],
-      },
-      { id: "m1-2", label: "종합민원신고상담", href: "" },
-      { id: "m1-3", label: "부패공익신고", href: "" },
-      { id: "m1-4", label: "용산구 옴부즈만", href: "" },
-    ],
-  },
   {
     id: "m2",
     label: "참여소통",
@@ -203,79 +214,10 @@ const MOBILE_MENU = [
         label: "구민의견/참여",
         href: "",
         children: [
-          { id: "m2-1-1", label: "아이디어뱅크", href: "" },
-          { id: "m2-1-2", label: "설문참여", href: "" },
-          { id: "m2-1-3", label: "온라인 투표", href: "" },
-          { id: "m2-1-4", label: "수요조사게시판", href: "" },
           { id: "m2-1-5", label: "칭찬합시다", href: "board1" },
           { id: "m2-1-6", label: "나도한마디", href: "board2" },
-          { id: "m2-1-7", label: "국민생각함", href: "" },
-          { id: "m2-1-8", label: "공유서비스(공간, 공구대여 등)", href: "" },
-          { id: "m2-1-9", label: "대학생(청년) 아르바이트", href: "" },
-          { id: "m2-1-10", label: "도시텃밭", href: "" },
-          { id: "m2-1-11", label: "세무설명회", href: "" },
         ],
       },
-      { id: "m2-2", label: "적극행정", href: "" },
-      { id: "m2-3", label: "주민참여예산제", href: "" },
-      { id: "m2-4", label: "마을", href: "" },
-    ],
-  },
-  {
-    id: "m3",
-    label: "행정정보",
-    children: [
-      {
-        id: "m3-1",
-        label: "구정운영",
-        href: "",
-        children: [
-          { id: "m3-1-1", label: "구정 계획", href: "" },
-          { id: "m3-1-2", label: "주요 정책", href: "" },
-          { id: "m3-1-3", label: "업무 보고", href: "" },
-        ],
-      },
-      { id: "m3-2", label: "정보공개청구", href: "" },
-      { id: "m3-3", label: "행정정보공개", href: "" },
-      { id: "m3-4", label: "정책실명제", href: "" },
-    ],
-  },
-  {
-    id: "m4",
-    label: "용산소개",
-    children: [
-      {
-        id: "m4-1",
-        label: "용산구안내",
-        href: "",
-        children: [
-          { id: "m4-1-1", label: "조직도", href: "" },
-          { id: "m4-1-2", label: "연혁", href: "" },
-          { id: "m4-1-3", label: "위치 안내", href: "" },
-        ],
-      },
-      { id: "m4-2", label: "구정소식", href: "" },
-      { id: "m4-3", label: "구정홍보", href: "" },
-      { id: "m4-4", label: "관내시설", href: "" },
-    ],
-  },
-  {
-    id: "m5",
-    label: "분야별 정보",
-    children: [
-      {
-        id: "m5-1",
-        label: "문화/관광",
-        href: "",
-        children: [
-          { id: "m5-1-1", label: "명소 소개", href: "" },
-          { id: "m5-1-2", label: "행사 안내", href: "" },
-          { id: "m5-1-3", label: "문화 시설", href: "" },
-        ],
-      },
-      { id: "m5-2", label: "복지", href: "" },
-      { id: "m5-3", label: "부동산/토지", href: "" },
-      { id: "m5-4", label: "교통", href: "" },
     ],
   },
 ];

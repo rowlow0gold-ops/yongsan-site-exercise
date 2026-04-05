@@ -1,7 +1,7 @@
 <template>
   <v-container fluid class="px-6 px-lg-12">
     <v-row class="gy-6 gx-6">
-      <v-col cols="13" md="6">
+      <v-col cols="12" md="6">
         <div class="module-frame">
           <BannerSlider class="fill-module" />
         </div>

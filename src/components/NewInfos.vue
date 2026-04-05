@@ -1,37 +1,29 @@
 <template>
   <section class="section">
-    <v-container>
-      <v-row>
-        <!-- LEFT -->
-        <v-col cols="12" md="4" class="left-area">
-          <h2 class="title">용산소식</h2>
+    <div class="section-inner">
+      <h2 class="title">용산소식</h2>
 
-          <div class="tabs">
-            <v-btn v-for="t in tabs" :key="t" class="tab" variant="outlined">
-              {{ t }}
-            </v-btn>
-          </div>
+      <div class="tabs">
+        <v-btn v-for="t in tabs" :key="t" class="tab" variant="outlined">
+          {{ t }}
+        </v-btn>
+      </div>
 
-          <v-btn class="more-btn" variant="text">
-            더 보기 <v-icon>mdi-arrow-right</v-icon>
+      <v-btn class="more-btn" variant="text">
+        더 보기 <v-icon>mdi-arrow-right</v-icon>
+      </v-btn>
+
+      <div :class="['cards', { scroll: isMobile }]">
+        <div v-for="(item, i) in items" :key="i" class="card">
+          <span class="tag">{{ item.tag }}</span>
+          <h3>{{ item.title }}</h3>
+          <p class="meta">{{ item.dept }} · {{ item.date }}</p>
+          <v-btn icon class="arrow">
+            <v-icon>mdi-arrow-top-right</v-icon>
           </v-btn>
-        </v-col>
-
-        <!-- RIGHT -->
-        <v-col cols="12" md="8">
-          <div :class="['cards', { scroll: isMobile }]">
-            <div v-for="(item, i) in items" :key="i" class="card">
-              <span class="tag">{{ item.tag }}</span>
-              <h3>{{ item.title }}</h3>
-              <p class="meta">{{ item.dept }} · {{ item.date }}</p>
-              <v-btn icon class="arrow">
-                <v-icon>mdi-arrow-top-right</v-icon>
-              </v-btn>
-            </div>
-          </div>
-        </v-col>
-      </v-row>
-    </v-container>
+        </div>
+      </div>
+    </div>
   </section>
 </template>
 
@@ -80,10 +72,10 @@ const items = [
   pointer-events: none;
 }
 
-.section > * {
-  padding: 20px 0px 20px 0px;
-  position: relative;
-  overflow: hidden;
+.section-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 20px 16px;
   position: relative;
   z-index: 1;
 }
