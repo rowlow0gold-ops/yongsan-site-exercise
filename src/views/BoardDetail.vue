@@ -298,7 +298,20 @@ async function loadDetail() {
     console.error(e);
 
     const status = e?.response?.status;
-    if (boardKey.value === "board2" && (status === 401 || status === 403)) {
+    if (status === 403) {
+      errorMsg.value = "비공개 게시글입니다.";
+      post.value = {
+        title: "비공개 게시글",
+        author: "-",
+        createdAt: "-",
+        views: 0,
+        attachments: [],
+        content: ["작성자 본인 또는 관리자만 열람할 수 있습니다."],
+        authorUserId: null,
+      };
+      return;
+    }
+    if (boardKey.value === "board2" && status === 401) {
       errorMsg.value = "로그인이 필요합니다.";
       post.value = {
         ...post.value,

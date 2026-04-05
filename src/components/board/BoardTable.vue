@@ -14,7 +14,7 @@
         >
           <template #item.title="{ item }">
             <div class="d-flex align-center ga-2">
-              <v-icon size="18" class="text-medium-emphasis">mdi-lock</v-icon>
+              <v-icon v-if="item.visibility === 'PRIVATE'" size="18" class="text-medium-emphasis">mdi-lock</v-icon>
               <RouterLink
                 class="text-decoration-none text-high-emphasis"
                 :to="{
@@ -45,7 +45,7 @@
           <div v-for="item in items" :key="item.id" class="py-4">
             <div class="d-flex align-center ga-2">
               <div class="text-subtitle-1 font-weight-bold">{{ item.id }}</div>
-              <v-icon size="18" class="text-medium-emphasis">mdi-lock</v-icon>
+              <v-icon v-if="item.visibility === 'PRIVATE'" size="18" class="text-medium-emphasis">mdi-lock</v-icon>
               <RouterLink
                 class="text-decoration-none text-high-emphasis"
                 :to="{

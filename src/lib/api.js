@@ -48,7 +48,7 @@ api.interceptors.response.use(
       original.url?.includes("/auth/refresh");
 
     if (
-      (status === 401 || status === 403) &&
+      status === 401 &&
       original &&
       !original._retry &&
       !isAuthEndpoint

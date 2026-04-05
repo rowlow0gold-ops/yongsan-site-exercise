@@ -72,6 +72,8 @@ function mapPost(p) {
     author: p.author,
     date: toYmd(p.createdAt ?? p.created_at ?? p.date),
     views: p.views ?? 0,
+    visibility: p.visibility ?? "PUBLIC",
+    authorUserId: p.authorUserId ?? null,
   };
 }
 
