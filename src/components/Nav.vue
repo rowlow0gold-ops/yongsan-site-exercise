@@ -17,10 +17,10 @@
       <!-- RIGHT: weather/info (desktop only) -->
       <div class="right-info d-none d-lg-flex">
         <div class="weather">
-          <div class="temp">☀ -5℃ <b class="temp_inner">맑음</b></div>
+          <div class="temp">{{ icon }} {{ temp ?? '--' }}℃ <b class="temp_inner">{{ desc || '...' }}</b></div>
           <div class="dust">
-            미세먼지 <b class="good">(보통)</b> · 초미세먼지
-            <b class="good">(보통)</b>
+            미세먼지 <b :class="gradeColor(pm10Grade)">({{ pm10Grade }})</b> · 초미세먼지
+            <b :class="gradeColor(pm25Grade)">({{ pm25Grade }})</b>
           </div>
         </div>
       </div>
@@ -143,9 +143,11 @@ import LoginDialog from "@/components/auth/LoginDialog.vue";
 import { useRouter, useRoute } from "vue-router";
 import { useAuthStore } from "@/stores/auth";
 import { useAlert } from "@/composables/useAlert";
+import { useWeather } from "@/composables/useWeather";
 import { logoutApi } from "@/api/auth";
 
 const { open } = useAlert();
+const { temp, desc, icon, loading: weatherLoading, pm10Grade, pm25Grade, gradeColor } = useWeather();
 
 const router = useRouter();
 const route = useRoute();
@@ -340,6 +342,10 @@ const MOBILE_MENU = [
 }
 .good {
   color: #1f9d3a;
+  font-weight: 800;
+}
+.bad {
+  color: #e53935;
   font-weight: 800;
 }
 
