@@ -1,5 +1,5 @@
 <template>
-  <v-breadcrumbs :items="normalized" class="">
+  <v-breadcrumbs :items="normalized" class="breadcrumbs-wrap">
     <template #divider>
       <v-icon size="14">mdi-chevron-right</v-icon>
     </template>
@@ -22,3 +22,21 @@ const normalized = computed(() =>
   })),
 );
 </script>
+
+<style scoped>
+.breadcrumbs-wrap {
+  flex-wrap: wrap;
+  padding: 8px 16px;
+  font-size: 13px;
+}
+
+@media (max-width: 600px) {
+  .breadcrumbs-wrap {
+    padding: 6px 8px;
+    font-size: 12px;
+  }
+  .breadcrumbs-wrap :deep(.v-breadcrumbs-item) {
+    padding: 0 2px;
+  }
+}
+</style>

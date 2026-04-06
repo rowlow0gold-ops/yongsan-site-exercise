@@ -54,19 +54,16 @@
 
       <template v-else>
         <div class="pa-5">
-          <div v-for="item in items" :key="item.id" class="py-4">
+          <div
+            v-for="item in items"
+            :key="item.id"
+            class="py-4 mobile-post-item"
+            @click="$router.push({ name: 'boardDetail', params: { boardKey: currentBoardKey, id: item.id } })"
+          >
             <div class="d-flex align-center ga-2">
               <div class="text-subtitle-1 font-weight-bold">{{ item.id }}</div>
               <v-icon v-if="item.visibility === 'PRIVATE'" size="18" class="text-medium-emphasis">mdi-lock</v-icon>
-              <RouterLink
-                class="text-decoration-none text-high-emphasis"
-                :to="{
-                  name: 'boardDetail',
-                  params: { boardKey: currentBoardKey, id: item.id },
-                }"
-              >
-                {{ item.title }}
-              </RouterLink>
+              <span class="text-high-emphasis">{{ item.title }}</span>
             </div>
 
             <div class="mt-3 text-body-2">
@@ -167,6 +164,13 @@ function goWrite() {
   justify-content: flex-end;
   margin-bottom: 12px;
   margin-right: 12px;
+}
+
+.mobile-post-item {
+  cursor: pointer;
+}
+.mobile-post-item:active {
+  background: rgba(0, 0, 0, 0.04);
 }
 
 /* ✅ Prevent pagination from shrinking/collapsing into arrows-only */
