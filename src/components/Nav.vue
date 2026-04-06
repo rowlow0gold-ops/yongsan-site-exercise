@@ -17,6 +17,7 @@
       <!-- RIGHT: weather/info (desktop only) -->
       <div class="right-info d-none d-lg-flex">
         <div class="weather">
+          <div class="area-name" v-if="area">{{ area }}</div>
           <div class="temp">{{ icon }} {{ temp ?? '--' }}℃ <b class="temp_inner">{{ desc || '...' }}</b></div>
           <div class="dust">
             미세먼지 <b :class="gradeColor(pm10Grade)">({{ pm10Grade }})</b> · 초미세먼지
@@ -147,7 +148,7 @@ import { useWeather } from "@/composables/useWeather";
 import { logoutApi } from "@/api/auth";
 
 const { open } = useAlert();
-const { temp, desc, icon, loading: weatherLoading, pm10Grade, pm25Grade, gradeColor } = useWeather();
+const { temp, desc, icon, area, loading: weatherLoading, pm10Grade, pm25Grade, gradeColor } = useWeather();
 
 const router = useRouter();
 const route = useRoute();
@@ -324,6 +325,12 @@ const MOBILE_MENU = [
 .weather {
   text-align: right;
   line-height: 1.2;
+}
+.area-name {
+  text-align: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: #555;
 }
 .temp {
   text-align: center;
