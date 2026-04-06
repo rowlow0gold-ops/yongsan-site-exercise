@@ -5,7 +5,7 @@
 ## 프로젝트 소개
 
 용산구청 홈페이지를 클론한 포트폴리오 프로젝트의 프론트엔드입니다.
-Vue 3 Composition API + Vuetify 3를 사용하여 구정소식, 게시판, 회원가입 등을 구현했습니다.
+Vue 3 Composition API + Vuetify 3를 사용하여 게시판, 회원가입을 구현했습니다.
 
 **배포 URL**
 - 운영: `https://yongsan.minhojan-world.site`
