@@ -35,15 +35,20 @@
           </template>
         </v-data-table>
 
-        <!-- ✅ Only show when needed + force numeric buttons -->
+        <!-- ✅ Pagination: « < 1 2 3 ... > » -->
         <div class="pagination-wrap" v-if="pageCount > 1">
+          <v-btn icon variant="text" size="small" :disabled="page <= 10" @click="$emit('update:page', Math.max(1, page - 10))">
+            <v-icon size="18">mdi-chevron-double-left</v-icon>
+          </v-btn>
           <v-pagination
             :model-value="page"
             :length="pageCount"
             :total-visible="7"
-            show-first-last
             @update:modelValue="$emit('update:page', $event)"
           />
+          <v-btn icon variant="text" size="small" :disabled="page + 10 > pageCount" @click="$emit('update:page', Math.min(pageCount, page + 10))">
+            <v-icon size="18">mdi-chevron-double-right</v-icon>
+          </v-btn>
         </div>
       </template>
 
@@ -88,15 +93,20 @@
             <v-divider class="mt-4" />
           </div>
 
-          <!-- ✅ Mobile: same forced numeric buttons -->
+          <!-- ✅ Mobile: « < 1 2 3 ... > » -->
           <div class="pagination-wrap" v-if="pageCount > 1">
+            <v-btn icon variant="text" size="small" :disabled="page <= 10" @click="$emit('update:page', Math.max(1, page - 10))">
+              <v-icon size="18">mdi-chevron-double-left</v-icon>
+            </v-btn>
             <v-pagination
               :model-value="page"
               :length="pageCount"
               :total-visible="5"
-              show-first-last
               @update:modelValue="$emit('update:page', $event)"
             />
+            <v-btn icon variant="text" size="small" :disabled="page + 10 > pageCount" @click="$emit('update:page', Math.min(pageCount, page + 10))">
+              <v-icon size="18">mdi-chevron-double-right</v-icon>
+            </v-btn>
           </div>
         </div>
       </template>
@@ -162,9 +172,11 @@ function goWrite() {
 /* ✅ Prevent pagination from shrinking/collapsing into arrows-only */
 .pagination-wrap {
   display: flex;
+  align-items: center;
   justify-content: center;
   padding: 16px 0;
   flex: 0 0 auto;
   min-width: 0;
+  gap: 0;
 }
 </style>
