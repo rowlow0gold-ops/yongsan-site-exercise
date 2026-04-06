@@ -26,6 +26,8 @@ import MainInfos from "@/components/MainInfos.vue";
 import NewInfos from "@/components/NewInfos.vue";
 import AlertBanner from "@/components/AlertBanner.vue";
 import CommunicationChannel from "@/components/CommunicationChannel.vue";
+import { useSeo } from "@/composables/useSeo";
+useSeo({ title: "홈", description: "용산구 홈페이지 클론 — 구정소식, 참여소통, 민원서비스", path: "/" });
 </script>
 <style scoped>
 .module-frame {

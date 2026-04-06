@@ -1,6 +1,8 @@
 <script setup>
 import { ref, onMounted } from "vue";
 import { meApi } from "@/api/auth";
+import { useSeo } from "@/composables/useSeo";
+useSeo({ title: "마이페이지", description: "내 정보 확인", path: "/mypage" });
 
 const loading = ref(true);
 const user = ref(null);

@@ -104,6 +104,7 @@ import { useRoute, useRouter } from "vue-router";
 import { fetchBoardDetail, deleteBoardPost } from "@/api/board";
 import { useAuthStore } from "@/stores/auth";
 import { useAlert } from "@/composables/useAlert";
+import { useSeo } from "@/composables/useSeo";
 
 const { open } = useAlert();
 
@@ -327,6 +328,9 @@ const post = ref({
   attachments: [],
   content: [],
 });
+
+const boardLabel = computed(() => boardKey.value === "board2" ? "나도한마디" : "칭찬합시다");
+useSeo({ title: computed(() => post.value.title ? `${post.value.title} — ${boardLabel.value}` : boardLabel.value), description: computed(() => post.value.title || "게시글 상세"), path: `/${boardKey.value}/${id.value}` });
 
 async function loadDetail() {
   if (!boardKey.value || !id.value) return;
