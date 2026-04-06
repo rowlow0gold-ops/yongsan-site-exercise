@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <clipPath id="clip">
+      <rect width="64" height="64" rx="14"/>
+    </clipPath>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#FFD700"/>
+      <stop offset="40%" stop-color="#FFC125"/>
+      <stop offset="100%" stop-color="#B8860B"/>
+    </linearGradient>
+    <linearGradient id="letter" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#F0F0F0"/>
+      <stop offset="50%" stop-color="#D8D8D8"/>
+      <stop offset="100%" stop-color="#A8A8A8"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="url(#bg)"/>
+  <!-- Bold silver slash lines -->
+  <g clip-path="url(#clip)">
+    <line x1="12" y1="-4" x2="-4" y2="12" stroke="#E0E0E0" stroke-width="2" opacity="0.7"/>
+    <line x1="28" y1="-4" x2="-4" y2="28" stroke="#D0D0D0" stroke-width="2.5" opacity="0.75"/>
+    <line x1="44" y1="-4" x2="-4" y2="44" stroke="#E0E0E0" stroke-width="2" opacity="0.7"/>
+    <line x1="60" y1="-4" x2="-4" y2="60" stroke="#D0D0D0" stroke-width="2.5" opacity="0.75"/>
+    <line x1="68" y1="8" x2="8" y2="68" stroke="#E0E0E0" stroke-width="2" opacity="0.7"/>
+    <line x1="68" y1="24" x2="24" y2="68" stroke="#D0D0D0" stroke-width="2.5" opacity="0.75"/>
+    <line x1="68" y1="40" x2="40" y2="68" stroke="#E0E0E0" stroke-width="2" opacity="0.7"/>
+    <line x1="68" y1="56" x2="56" y2="68" stroke="#D0D0D0" stroke-width="2.5" opacity="0.75"/>
+  </g>
+  <text x="32" y="48" text-anchor="middle" font-family="Georgia, serif" font-size="44" font-weight="bold" fill="url(#letter)" stroke="#909090" stroke-width="0.8">J</text>
+</svg>
