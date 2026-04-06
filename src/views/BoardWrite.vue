@@ -200,6 +200,7 @@ import { useRouter, useRoute } from "vue-router";
 import { useAuthStore } from "@/stores/auth";
 import { useAlert } from "@/composables/useAlert";
 import { useLeaveGuard } from "@/composables/useLeaveGuard";
+import { useSeo } from "@/composables/useSeo";
 import api from "@/lib/api";
 import Breadcrumbs from "@/components/participation/Breadcrumbs.vue";
 
@@ -223,6 +224,8 @@ const boardKey = computed(() => String(route.params.boardKey || ""));
 const boardTitle = computed(() =>
   boardKey.value === "board2" ? "나도한마디" : "칭찬합시다",
 );
+
+useSeo({ title: computed(() => `글쓰기 — ${boardTitle.value}`), description: computed(() => `${boardTitle.value} 게시판 글쓰기`), path: computed(() => `/${boardKey.value}/write`) });
 
 const breadcrumbs = computed(() => [
   { title: "HOME", to: "/" },

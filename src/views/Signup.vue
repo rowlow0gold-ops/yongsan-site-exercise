@@ -110,7 +110,9 @@ import { useRouter, useRoute } from "vue-router";
 import { signupApi, loginApi } from "@/api/auth";
 import { useAuthStore } from "@/stores/auth";
 import { useLeaveGuard } from "@/composables/useLeaveGuard";
+import { useSeo } from "@/composables/useSeo";
 const auth = useAuthStore();
+useSeo({ title: "회원가입", description: "용산구 홈페이지 회원가입", path: "/signup" });
 
 const router = useRouter();
 const route = useRoute();

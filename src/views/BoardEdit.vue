@@ -215,6 +215,7 @@ import { useRoute, useRouter } from "vue-router";
 import { useAuthStore } from "@/stores/auth";
 import { useAlert } from "@/composables/useAlert";
 import { useLeaveGuard } from "@/composables/useLeaveGuard";
+import { useSeo } from "@/composables/useSeo";
 import Breadcrumbs from "@/components/participation/Breadcrumbs.vue";
 import api from "@/lib/api";
 
@@ -237,6 +238,8 @@ if (!boardKey.value) {
 const id = ref(route.params.id);
 
 const isPraise = computed(() => String(boardKey.value) === "board1");
+
+useSeo({ title: computed(() => `수정 — ${isPraise.value ? "칭찬합시다" : "나도한마디"}`), description: computed(() => `${isPraise.value ? "칭찬합시다" : "나도한마디"} 게시글 수정`), path: `/${boardKey.value}/${id.value}/edit` });
 
 const password = ref("");
 const pwKey = computed(() => `boardPostPw:${boardKey.value}:${id.value}`);

@@ -7,4 +7,6 @@
 
 <script setup>
 import BoardPage from "./BoardPage.vue";
+import { useSeo } from "@/composables/useSeo";
+useSeo({ title: "칭찬합시다", description: "용산구 칭찬합시다 게시판", path: "/board1" });
 </script>

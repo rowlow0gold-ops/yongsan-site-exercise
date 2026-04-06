@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://yongsan.minhojan-world.site/sitemap.xml
