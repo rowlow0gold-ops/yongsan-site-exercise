@@ -13,17 +13,12 @@
           hide-default-footer
         >
           <template #item.title="{ item }">
-            <div class="d-flex align-center ga-2">
+            <div
+              class="title-cell d-flex align-center ga-2"
+              @click="goDetail(item.id)"
+            >
               <v-icon v-if="item.visibility === 'PRIVATE'" size="18" class="text-medium-emphasis">mdi-lock</v-icon>
-              <RouterLink
-                class="text-decoration-none text-high-emphasis"
-                :to="{
-                  name: 'boardDetail',
-                  params: { boardKey: currentBoardKey, id: item.id },
-                }"
-              >
-                {{ item.title }}
-              </RouterLink>
+              <span class="text-high-emphasis">{{ item.title }}</span>
             </div>
           </template>
 
@@ -58,7 +53,7 @@
             v-for="item in items"
             :key="item.id"
             class="py-4 mobile-post-item"
-            @click="$router.push({ name: 'boardDetail', params: { boardKey: currentBoardKey, id: item.id } })"
+            @click="goDetail(item.id)"
           >
             <div class="d-flex align-center ga-2">
               <div class="text-subtitle-1 font-weight-bold">{{ item.id }}</div>
@@ -120,7 +115,7 @@
 
 <script setup>
 import { computed } from "vue";
-import { RouterLink, useRouter, useRoute } from "vue-router";
+import { useRouter, useRoute } from "vue-router";
 
 const router = useRouter();
 const route = useRoute();
@@ -144,6 +139,13 @@ function getBoardKey() {
 
 const currentBoardKey = computed(() => getBoardKey());
 
+function goDetail(id) {
+  router.push({
+    name: "boardDetail",
+    params: { boardKey: currentBoardKey.value, id },
+  });
+}
+
 function goWrite() {
   router.push({
     name: "boardWrite",
@@ -157,6 +159,20 @@ function goWrite() {
 .board1-table :deep(.v-data-table__th) {
   padding-top: 14px;
   padding-bottom: 14px;
+}
+
+.board1-table :deep(tr:hover td) {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.title-cell {
+  cursor: pointer;
+  width: 100%;
+  height: 100%;
+  padding: 4px 0;
+}
+.title-cell:hover span {
+  text-decoration: underline;
 }
 
 .board-actions {

@@ -25,18 +25,21 @@ const normalized = computed(() =>
 
 <style scoped>
 .breadcrumbs-wrap {
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  overflow-x: auto;
   padding: 8px 16px;
   font-size: 13px;
+  white-space: nowrap;
+}
+
+.breadcrumbs-wrap :deep(.v-breadcrumbs-item) {
+  white-space: nowrap;
 }
 
 @media (max-width: 600px) {
   .breadcrumbs-wrap {
     padding: 6px 8px;
     font-size: 12px;
-  }
-  .breadcrumbs-wrap :deep(.v-breadcrumbs-item) {
-    padding: 0 2px;
   }
 }
 </style>
