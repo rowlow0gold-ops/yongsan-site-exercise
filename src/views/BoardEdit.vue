@@ -214,6 +214,7 @@ import { ref, onMounted, computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useAuthStore } from "@/stores/auth";
 import { useAlert } from "@/composables/useAlert";
+import { useLeaveGuard } from "@/composables/useLeaveGuard";
 import Breadcrumbs from "@/components/participation/Breadcrumbs.vue";
 import api from "@/lib/api";
 
@@ -282,6 +283,13 @@ const formRef = ref(null);
 
 const loading = ref(false);
 const saving = ref(false);
+
+// Track original values to detect changes
+const original = ref({ title: "", content: "" });
+
+const { markSubmitted } = useLeaveGuard(
+  () => title.value !== original.value.title || content.value !== original.value.content,
+);
 
 const rules = {
   required: (v) => !!v || "Required",
@@ -364,6 +372,9 @@ async function loadPost() {
     splitEmail(data.email);
 
     files.value = [];
+
+    // Snapshot for dirty check
+    original.value = { title: title.value, content: content.value };
   } catch (e) {
     console.error(e);
     alert("Failed to load post.");
@@ -408,6 +419,7 @@ async function onSubmit() {
   saving.value = true;
   try {
     await api.put(`/api/boards/${boardKey.value}/posts/${id.value}`, payload);
+    markSubmitted();
     sessionStorage.removeItem(pwKey.value);
     open("게시글이 수정되었습니다.", "success");
     goDetail();
