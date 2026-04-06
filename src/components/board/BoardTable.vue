@@ -13,17 +13,12 @@
           hide-default-footer
         >
           <template #item.title="{ item }">
-            <div class="d-flex align-center ga-2">
+            <div
+              class="title-cell d-flex align-center ga-2"
+              @click="goDetail(item.id)"
+            >
               <v-icon v-if="item.visibility === 'PRIVATE'" size="18" class="text-medium-emphasis">mdi-lock</v-icon>
-              <RouterLink
-                class="text-decoration-none text-high-emphasis"
-                :to="{
-                  name: 'boardDetail',
-                  params: { boardKey: currentBoardKey, id: item.id },
-                }"
-              >
-                {{ item.title }}
-              </RouterLink>
+              <span class="text-high-emphasis">{{ item.title }}</span>
             </div>
           </template>
 
@@ -35,33 +30,35 @@
           </template>
         </v-data-table>
 
-        <!-- ✅ Only show when needed + force numeric buttons -->
+        <!-- ✅ Pagination: « < 1 2 3 ... > » -->
         <div class="pagination-wrap" v-if="pageCount > 1">
+          <v-btn icon variant="text" size="small" :disabled="page <= 10" @click="$emit('update:page', Math.max(1, page - 10))">
+            <v-icon size="18">mdi-chevron-double-left</v-icon>
+          </v-btn>
           <v-pagination
             :model-value="page"
             :length="pageCount"
             :total-visible="7"
-            show-first-last
             @update:modelValue="$emit('update:page', $event)"
           />
+          <v-btn icon variant="text" size="small" :disabled="page + 10 > pageCount" @click="$emit('update:page', Math.min(pageCount, page + 10))">
+            <v-icon size="18">mdi-chevron-double-right</v-icon>
+          </v-btn>
         </div>
       </template>
 
       <template v-else>
         <div class="pa-5">
-          <div v-for="item in items" :key="item.id" class="py-4">
+          <div
+            v-for="item in items"
+            :key="item.id"
+            class="py-4 mobile-post-item"
+            @click="goDetail(item.id)"
+          >
             <div class="d-flex align-center ga-2">
               <div class="text-subtitle-1 font-weight-bold">{{ item.id }}</div>
               <v-icon v-if="item.visibility === 'PRIVATE'" size="18" class="text-medium-emphasis">mdi-lock</v-icon>
-              <RouterLink
-                class="text-decoration-none text-high-emphasis"
-                :to="{
-                  name: 'boardDetail',
-                  params: { boardKey: currentBoardKey, id: item.id },
-                }"
-              >
-                {{ item.title }}
-              </RouterLink>
+              <span class="text-high-emphasis">{{ item.title }}</span>
             </div>
 
             <div class="mt-3 text-body-2">
@@ -88,15 +85,20 @@
             <v-divider class="mt-4" />
           </div>
 
-          <!-- ✅ Mobile: same forced numeric buttons -->
+          <!-- ✅ Mobile: « < 1 2 3 ... > » -->
           <div class="pagination-wrap" v-if="pageCount > 1">
+            <v-btn icon variant="text" size="small" :disabled="page <= 10" @click="$emit('update:page', Math.max(1, page - 10))">
+              <v-icon size="18">mdi-chevron-double-left</v-icon>
+            </v-btn>
             <v-pagination
               :model-value="page"
               :length="pageCount"
               :total-visible="5"
-              show-first-last
               @update:modelValue="$emit('update:page', $event)"
             />
+            <v-btn icon variant="text" size="small" :disabled="page + 10 > pageCount" @click="$emit('update:page', Math.min(pageCount, page + 10))">
+              <v-icon size="18">mdi-chevron-double-right</v-icon>
+            </v-btn>
           </div>
         </div>
       </template>
@@ -113,7 +115,7 @@
 
 <script setup>
 import { computed } from "vue";
-import { RouterLink, useRouter, useRoute } from "vue-router";
+import { useRouter, useRoute } from "vue-router";
 
 const router = useRouter();
 const route = useRoute();
@@ -137,6 +139,13 @@ function getBoardKey() {
 
 const currentBoardKey = computed(() => getBoardKey());
 
+function goDetail(id) {
+  router.push({
+    name: "boardDetail",
+    params: { boardKey: currentBoardKey.value, id },
+  });
+}
+
 function goWrite() {
   router.push({
     name: "boardWrite",
@@ -152,6 +161,20 @@ function goWrite() {
   padding-bottom: 14px;
 }
 
+.board1-table :deep(tr:hover td) {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.title-cell {
+  cursor: pointer;
+  width: 100%;
+  height: 100%;
+  padding: 4px 0;
+}
+.title-cell:hover span {
+  text-decoration: underline;
+}
+
 .board-actions {
   display: flex;
   justify-content: flex-end;
@@ -159,12 +182,21 @@ function goWrite() {
   margin-right: 12px;
 }
 
+.mobile-post-item {
+  cursor: pointer;
+}
+.mobile-post-item:active {
+  background: rgba(0, 0, 0, 0.04);
+}
+
 /* ✅ Prevent pagination from shrinking/collapsing into arrows-only */
 .pagination-wrap {
   display: flex;
+  align-items: center;
   justify-content: center;
   padding: 16px 0;
   flex: 0 0 auto;
   min-width: 0;
+  gap: 0;
 }
 </style>
