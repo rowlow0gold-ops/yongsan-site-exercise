@@ -199,6 +199,7 @@ import { ref, computed, onMounted } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { useAuthStore } from "@/stores/auth";
 import { useAlert } from "@/composables/useAlert";
+import { useLeaveGuard } from "@/composables/useLeaveGuard";
 import api from "@/lib/api";
 import Breadcrumbs from "@/components/participation/Breadcrumbs.vue";
 
@@ -255,6 +256,11 @@ const agree = ref(true);
 
 const formRef = ref(null);
 
+// Leave guard — warn if user typed anything
+const { markSubmitted } = useLeaveGuard(
+  () => !!(title.value || content.value || password.value),
+);
+
 const isPraise = computed(() => boardKey.value === "board1");
 const password = ref("");
 
@@ -305,6 +311,7 @@ async function onSubmit() {
 
   try {
     await api.post(`/api/boards/${boardKey.value}/posts`, payload);
+    markSubmitted();
     open("게시글이 등록되었습니다.", "success");
     goList();
   } catch (e) {

@@ -1,5 +1,5 @@
 <template>
-  <v-dialog v-model="model" max-width="420" persistent>
+  <v-dialog v-model="model" max-width="420">
     <v-card rounded="xl" class="pa-6">
       <div class="d-flex align-center justify-space-between mb-4">
         <v-btn icon variant="text" @click="model = false">
@@ -23,6 +23,7 @@
         variant="outlined"
         density="comfortable"
         class="mb-2"
+        @keyup.enter="login"
       />
 
       <v-alert v-if="error" type="error" variant="tonal" class="mb-3">
@@ -73,7 +74,7 @@
 </template>
 
 <script setup>
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import { useAuthStore } from "@/stores/auth";
 import { loginApi } from "@/api/auth";
 
@@ -83,6 +84,15 @@ const emit = defineEmits(["update:modelValue", "success", "go-signup"]);
 const model = computed({
   get: () => props.modelValue,
   set: (v) => emit("update:modelValue", v),
+});
+
+// Reset form when dialog opens
+watch(() => props.modelValue, (open) => {
+  if (open) {
+    email.value = "";
+    password.value = "";
+    error.value = "";
+  }
 });
 
 const auth = useAuthStore();

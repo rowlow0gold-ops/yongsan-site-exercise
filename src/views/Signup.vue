@@ -109,6 +109,7 @@ import { computed, reactive, ref, watch } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { signupApi, loginApi } from "@/api/auth";
 import { useAuthStore } from "@/stores/auth";
+import { useLeaveGuard } from "@/composables/useLeaveGuard";
 const auth = useAuthStore();
 
 const router = useRouter();
@@ -134,6 +135,11 @@ watch(agreeAll, (v) => {
 
 const canGoStep2 = computed(() => agreeTerms.value && agreePrivacy.value);
 
+// Leave guard — warn if user started filling the form (step 2+)
+const { markSubmitted } = useLeaveGuard(
+  () => step.value >= 2 && !!(form.name || form.email || form.password),
+);
+
 const form = reactive({
   name: "",
   email: "",
@@ -155,6 +161,7 @@ async function finishSignup() {
     // 2) auto login (optional but nice)
     const res = await loginApi(form.email, form.password);
     auth.setAuth(res.data); // expects { accessToken, user }
+    markSubmitted();
 
     step.value = 3;
   } catch (e) {

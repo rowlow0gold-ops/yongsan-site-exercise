@@ -41,6 +41,7 @@ export function useWeather() {
   const temp = ref(null);
   const desc = ref("");
   const icon = ref("☀");
+  const area = ref("");
   const loading = ref(true);
   const error = ref(false);
 
@@ -117,6 +118,7 @@ export function useWeather() {
     temp.value = Math.round(weatherData.main?.temp ?? 0);
     desc.value = weatherMap[main] || main;
     icon.value = iconMap[main] || "☀";
+    area.value = weatherData.name || "Yongsan";
 
     if (airData?.list?.[0]?.components) {
       const c = airData.list[0].components;
@@ -135,6 +137,7 @@ export function useWeather() {
     temp,
     desc,
     icon,
+    area,
     loading,
     error,
     pm10Grade,
