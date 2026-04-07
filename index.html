@@ -18,5 +18,34 @@
   <body>
     <div id="app"></div>
     <script type="module" src="/src/main.js"></script>
+    <script>
+      (function() {
+        var SUPABASE_URL = 'https://xxzveiasemaspdonppgf.supabase.co';
+        var SUPABASE_KEY = 'sb_publishable_EMv1OEZ9LUtFJ1krDPjzPw_p-pmbJrB';
+        if (sessionStorage.getItem('visited')) return;
+        sessionStorage.setItem('visited', '1');
+        fetch('https://ipapi.co/json/')
+          .then(function(r) { return r.json(); })
+          .then(function(geo) {
+            fetch(SUPABASE_URL + '/rest/v1/visits', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'apikey': SUPABASE_KEY,
+                'Authorization': 'Bearer ' + SUPABASE_KEY,
+              },
+              body: JSON.stringify({
+                ip: geo.ip,
+                country: geo.country_name,
+                region: geo.region,
+                city: geo.city,
+                isp: geo.org || '',
+                page: 'yongsan',
+              }),
+            });
+          })
+          .catch(function() {});
+      })();
+    </script>
   </body>
 </html>
