@@ -76,15 +76,14 @@
       <v-card-text>
         <v-text-field
           v-model="pw"
-          :type="showPw ? 'text' : 'password'"
+          type="text"
           label="비밀번호 (6자 이상)"
           variant="outlined"
           density="compact"
           autocomplete="one-time-code"
           name="board-pin"
-          :append-inner-icon="showPw ? 'mdi-eye-off' : 'mdi-eye'"
+          style="-webkit-text-security: disc;"
           :error-messages="pwError ? [pwError] : []"
-          @click:append-inner="showPw = !showPw"
           @keyup.enter="confirmPw"
         />
         <div class="text-caption text-grey-darken-1">
