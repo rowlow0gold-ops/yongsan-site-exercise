@@ -76,11 +76,13 @@
       <v-card-text>
         <v-text-field
           v-model="pw"
-          type="password"
+          type="text"
           label="비밀번호 (6자 이상)"
           variant="outlined"
           density="compact"
-          autocomplete="current-password"
+          autocomplete="one-time-code"
+          name="board-pin"
+          style="-webkit-text-security: disc;"
           :error-messages="pwError ? [pwError] : []"
           @keyup.enter="confirmPw"
         />
@@ -123,6 +125,7 @@ const pwDialog = ref(false);
 const pw = ref("");
 const pwAction = ref("delete"); // "delete" | "edit" | "view"
 const pwError = ref("");
+const showPw = ref(false);
 
 const isPraise = computed(() => boardKey.value === "board1");
 const viewPassword = ref(""); // password used to unlock a private guest post

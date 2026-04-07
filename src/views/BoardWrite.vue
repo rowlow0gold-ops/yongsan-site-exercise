@@ -33,13 +33,14 @@
           >
             <v-text-field
               v-model="password"
-              type="password"
+              type="text"
               variant="outlined"
               density="compact"
               :rules="[rules.pwMin6]"
               placeholder="6자 이상 입력"
-              autocomplete="new-password"
-              style="max-width: 420px"
+              autocomplete="one-time-code"
+              name="board-pin"
+              style="max-width: 420px; -webkit-text-security: disc;"
               required
             />
           </v-col>
