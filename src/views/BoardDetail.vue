@@ -80,7 +80,7 @@
           label="비밀번호 (6자 이상)"
           variant="outlined"
           density="compact"
-          autocomplete="current-password"
+          autocomplete="off"
           :error-messages="pwError ? [pwError] : []"
           @keyup.enter="confirmPw"
         />

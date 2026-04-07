@@ -38,7 +38,7 @@
               density="compact"
               :rules="[rules.pwMin6]"
               placeholder="6자 이상 입력"
-              autocomplete="new-password"
+              autocomplete="off"
               style="max-width: 420px"
               required
             />
