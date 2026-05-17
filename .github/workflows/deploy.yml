@@ -1,18 +1,21 @@
-name: Deploy Frontend
+name: Deploy Yongsan Frontend
+
 on:
   push:
-    branches:
-      - main
-      - dev
+    branches: [main]
+    paths-ignore:
+      - "README.md"
+      - "**/*.md"
+  workflow_dispatch:
 
 jobs:
   test:
+    name: Unit + E2E tests
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Set up Node
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: "20"
       - name: Install dependencies
@@ -20,94 +23,24 @@ jobs:
       - name: Run tests
         run: npm test
 
-  build-test:
+  deploy:
+    name: Build & Deploy (home server)
     needs: test
-    if: github.ref == 'refs/heads/dev'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
+    runs-on: [self-hosted, home]
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-      - name: Login to GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GHCR_TOKEN }}
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          push: true
-          tags: ghcr.io/rowlow0gold-ops/yongsan-frontend:test
-          build-args: |
-            VITE_API_BASE_URL=https://test.minhojan-world.site
-            VITE_SENTRY_DSN=${{ secrets.VITE_SENTRY_DSN }}
-            VITE_WEATHER_API_KEY=${{ secrets.VITE_WEATHER_API_KEY }}
+      - name: Sync source on home server
+        run: |
+          cd /home/jj/apps/yongsan-site-exercise
+          git fetch origin main
+          git reset --hard origin/main
 
-  build-prod:
-    needs: test
-    if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-      - name: Login to GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GHCR_TOKEN }}
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          push: true
-          tags: ghcr.io/rowlow0gold-ops/yongsan-frontend:latest
-          build-args: |
-            VITE_API_BASE_URL=https://yongsan.minhojan-world.site
-            VITE_SENTRY_DSN=${{ secrets.VITE_SENTRY_DSN }}
-            VITE_WEATHER_API_KEY=${{ secrets.VITE_WEATHER_API_KEY }}
+      - name: Rebuild & restart frontend
+        run: |
+          cd /home/jj/apps/stack
+          docker compose --env-file .env build yongsan-frontend
+          docker compose --env-file .env up -d --no-deps yongsan-frontend
 
-  deploy-test:
-    needs: build-test
-    if: github.ref == 'refs/heads/dev'
-    runs-on: ubuntu-latest
-    environment: test
-    steps:
-      - name: Deploy to test server
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.TEST_SERVER_HOST }}
-          username: ${{ secrets.TEST_SERVER_USER }}
-          key: ${{ secrets.TEST_SERVER_SSH_KEY }}
-          command_timeout: 5m
-          script: |
-            echo ${{ secrets.GHCR_TOKEN }} | docker login ghcr.io -u rowlow0gold-ops --password-stdin
-            docker pull ghcr.io/rowlow0gold-ops/yongsan-frontend:test
-            cd ~
-            docker compose up --detach
-
-  deploy-prod:
-    needs: build-prod
-    if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    environment: production
-    steps:
-      - name: Deploy to prod server
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SERVER_SSH_KEY }}
-          command_timeout: 5m
-          script: |
-            echo ${{ secrets.GHCR_TOKEN }} | docker login ghcr.io -u rowlow0gold-ops --password-stdin
-            docker pull ghcr.io/rowlow0gold-ops/yongsan-frontend:latest
-            cd ~
-            docker compose up --detach
+      - name: Health check
+        run: |
+          sleep 3
+          curl -fsS -o /dev/null http://127.0.0.1:8081/
