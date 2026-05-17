@@ -8,24 +8,45 @@ on:
       - "**/*.md"
   workflow_dispatch:
 
+env:
+  IMAGE: stack-yongsan-frontend:latest
+  DEPLOYMENT: yongsan-frontend
+  NAMESPACE: apps
+  KUBECONFIG: /tmp/k3s.yaml
+
 jobs:
   deploy:
-    name: Build & Deploy (home server)
+    name: Build & Deploy to K3s
     runs-on: [self-hosted, home]
     steps:
-      - name: Sync source on home server
+      - name: Sync source
         run: |
           cd /home/jj/apps/yongsan-site-exercise
           git fetch origin main
           git reset --hard origin/main
 
-      - name: Rebuild & restart frontend
+      - name: Build image (with VITE build args from host .env)
         run: |
-          cd /home/jj/apps/stack
-          docker compose --env-file .env build yongsan-frontend
-          docker compose --env-file .env up -d --no-deps yongsan-frontend
+          cd /home/jj/apps/yongsan-site-exercise
+          # Source build-time env vars from the home server's saved .env
+          set -a
+          source /home/jj/apps/stack/.env
+          set +a
+          docker build \
+            --build-arg VITE_API_BASE_URL=https://yongsan.minhojan-world.site \
+            --build-arg VITE_WEATHER_API_KEY="$VITE_WEATHER_API_KEY" \
+            --build-arg VITE_SENTRY_DSN="$VITE_SENTRY_DSN" \
+            -t ${{ env.IMAGE }} .
+
+      - name: Import into K3s containerd
+        run: docker save ${{ env.IMAGE }} | /usr/local/bin/k3s ctr -n k8s.io images import -
+
+      - name: Rollout restart deployment
+        run: |
+          /usr/local/bin/k3s kubectl --insecure-skip-tls-verify rollout restart deployment/${{ env.DEPLOYMENT }} -n ${{ env.NAMESPACE }}
+          /usr/local/bin/k3s kubectl --insecure-skip-tls-verify rollout status deployment/${{ env.DEPLOYMENT }} -n ${{ env.NAMESPACE }} --timeout=120s
 
       - name: Health check
         run: |
           sleep 3
-          curl -fsS -o /dev/null http://yongsan-frontend/
+          curl -fsS -o /dev/null http://yongsan-frontend.apps.svc.cluster.local/
