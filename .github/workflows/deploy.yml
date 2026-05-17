@@ -49,4 +49,4 @@ jobs:
       - name: Health check
         run: |
           sleep 3
-          curl -fsS -o /dev/null http://yongsan-frontend.apps.svc.cluster.local/
+          curl -fsS -o /dev/null https://yongsan.minhojan-world.site/
