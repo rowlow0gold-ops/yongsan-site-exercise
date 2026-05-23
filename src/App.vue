@@ -35,7 +35,7 @@ import { ref, onMounted, onBeforeUnmount, watch } from "vue";
 import { useAlert } from "@/composables/useAlert";
 import { useRouter, useRoute } from "vue-router";
 import { useAuthStore } from "@/stores/auth";
-import { meApi } from "@/api/auth";
+import { meApi, exchangeApi } from "@/api/auth";
 
 const { show, message, color, close, open } = useAlert();
 const router = useRouter(); // ← move here
@@ -92,22 +92,27 @@ onBeforeUnmount(() => {
   window.removeEventListener("resize", onScroll);
 });
 
-// Add this after const route = useRoute();
+// After OAuth login the backend redirects with ?code=<one-time code>.
+// We exchange it for the real access token via POST /auth/exchange so the
+// token never lands in the URL / browser history / server access logs / Referer.
 watch(
-  () => route.query.token,
-  async (token) => {
-    if (token) {
-      const authStore = useAuthStore();
+  () => route.query.code,
+  async (code) => {
+    if (!code) return;
+    const authStore = useAuthStore();
+    // Strip the code from the URL immediately so it can't be re-used or
+    // accidentally bookmarked.
+    router.replace({ query: {} });
+    try {
+      const { data } = await exchangeApi(code);
+      const token = data.accessToken;
       authStore.setAccessToken(token);
-      try {
-        const res = await meApi();
-        authStore.setAuth({ accessToken: token, user: res.data });
-        open("로그인 되었습니다.", "success");
-      } catch (e) {
-        console.error("Failed to get user info", e);
-        open("로그인에 실패했습니다.", "error");
-      }
-      router.replace({ query: {} });
+      const res = await meApi();
+      authStore.setAuth({ accessToken: token, user: res.data });
+      open("로그인 되었습니다.", "success");
+    } catch (e) {
+      console.error("OAuth code exchange failed", e);
+      open("로그인에 실패했습니다.", "error");
     }
   },
   { immediate: true },

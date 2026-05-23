@@ -23,3 +23,8 @@ export function meApi() {
 export function signupApi(name, email, password) {
   return api.post("/auth/signup", { name, email, password });
 }
+
+// Exchange the one-time code returned by the OAuth redirect for an access token.
+export function exchangeApi(code) {
+  return api.post("/auth/exchange", { code });
+}
