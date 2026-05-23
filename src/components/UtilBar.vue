@@ -99,14 +99,10 @@ function formatMs(ms) {
   return h > 0 ? `${h}h ${m}m ${s}s` : `${m}m ${s}s`;
 }
 
-const jwtLeftText = computed(() => {
-  const expMs = getExpMsFromJwt(auth.accessToken);
-  if (!auth.isAuthed) return "";
-  if (!expMs) return "JWT: (no exp)";
-  const left = expMs - now.value;
-  if (left <= 0) return "JWT: expired";
-  return `JWT: ${formatMs(left)}`;
-});
+// JWT lifetime is no longer visible to JS (access token moved to HttpOnly
+// cookie). The countdown UI is removed; "expiring soon" prompts now happen
+// via the response interceptor's silent refresh on 401.
+const jwtLeftText = computed(() => "");
 
 async function handleAuthClick() {
   if (!auth.isAuthed) {

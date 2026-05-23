@@ -1,43 +1,37 @@
 import axios from "axios";
 import { useAuthStore } from "@/stores/auth";
-import { getJwtExpMs } from "@/lib/jwt";
 import pinia from "@/plugins/pinia";
-console.log("[api.js loaded] pinia=", pinia);
+
 const baseURL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 
+// Auth is cookie-based now (HttpOnly access_token + refresh_token cookies set
+// by the backend). The browser sends them automatically when withCredentials
+// is true; JS can't read the token, which is the whole point.
+//
+// CSRF: the backend writes a non-HttpOnly XSRF-TOKEN cookie. Axios reads it
+// and sends X-XSRF-TOKEN on state-changing requests automatically because the
+// xsrf names below match Spring Security's defaults.
 const api = axios.create({
   baseURL,
   withCredentials: true,
+  xsrfCookieName: "XSRF-TOKEN",
+  xsrfHeaderName: "X-XSRF-TOKEN",
 });
 
 const refreshClient = axios.create({
   baseURL,
   withCredentials: true,
-});
-
-api.interceptors.request.use((config) => {
-  const auth = useAuthStore(pinia);
-  const token = auth?.accessToken;
-
-  if (token) {
-    // Only send token if it's not expired
-    const exp = getJwtExpMs(token);
-    if (exp && exp > Date.now()) {
-      config.headers = config.headers || {};
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    // Expired token → don't send it, request goes as anonymous
-  }
-  return config;
+  xsrfCookieName: "XSRF-TOKEN",
+  xsrfHeaderName: "X-XSRF-TOKEN",
 });
 
 let isRefreshing = false;
 let queue = [];
 
-function processQueue(error, token = null) {
+function processQueue(error) {
   queue.forEach(({ resolve, reject }) => {
     if (error) reject(error);
-    else resolve(token);
+    else resolve();
   });
   queue = [];
 }
@@ -50,7 +44,8 @@ api.interceptors.response.use(
     const isAuthEndpoint =
       original.url?.includes("/auth/login") ||
       original.url?.includes("/auth/signup") ||
-      original.url?.includes("/auth/refresh");
+      original.url?.includes("/auth/refresh") ||
+      original.url?.includes("/auth/exchange");
 
     // Only auto-refresh for GET requests — never silently re-auth on writes
     const isSafeMethod = (original.method || "get").toLowerCase() === "get";
@@ -67,11 +62,7 @@ api.interceptors.response.use(
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           queue.push({ resolve, reject });
-        }).then((token) => {
-          original.headers = original.headers || {}; // ✅ avoid undefined
-          original.headers.Authorization = `Bearer ${token}`;
-          return api(original);
-        });
+        }).then(() => api(original));
       }
 
       isRefreshing = true;
@@ -84,19 +75,15 @@ api.interceptors.response.use(
           return Promise.reject(err);
         }
 
-        const { data } = await refreshClient.post("/auth/refresh");
-        const newToken = data.accessToken;
-
-        auth.setAccessToken(newToken);
-        processQueue(null, newToken);
-
-        original.headers = original.headers || {}; // ✅ avoid undefined
-        original.headers.Authorization = `Bearer ${newToken}`;
+        // /auth/refresh now sets a fresh access_token cookie server-side;
+        // no token returned in the body.
+        await refreshClient.post("/auth/refresh");
+        processQueue(null);
         return api(original);
       } catch (refreshErr) {
-        const auth = useAuthStore(pinia); // ✅ IMPORTANT
+        const auth = useAuthStore(pinia);
         auth.clearAuth();
-        processQueue(refreshErr, null);
+        processQueue(refreshErr);
 
         window.location.href = "/?login=1";
         return Promise.reject(refreshErr);

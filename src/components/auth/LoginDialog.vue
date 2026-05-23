@@ -119,15 +119,11 @@ async function login() {
   try {
     const { data } = await loginApi(email.value, password.value);
 
-    // Expecting backend response:
-    // { accessToken: "...", user: {...} }
+    // Cookie auth: login sets the access_token cookie server-side and returns
+    // the user record directly (no token in body).
+    auth.setAuth({ user: data });
 
-    auth.setAuth({
-      accessToken: data.accessToken,
-      user: data.user,
-    });
-
-    emit("success", data.user);
+    emit("success", data);
     model.value = false;
   } catch (e) {
     error.value =

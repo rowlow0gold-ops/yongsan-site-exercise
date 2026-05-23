@@ -85,6 +85,20 @@ onMounted(async () => {
   window.addEventListener("scroll", onScroll, { passive: true });
   window.addEventListener("resize", onScroll);
   onScroll();
+
+  // Cookie-auth bootstrap: if the user still has a valid access_token cookie
+  // from a previous session, rehydrate the in-memory user record. A 401 here
+  // is fine — it just means we're not logged in.
+  const authStore = useAuthStore();
+  if (!authStore.refreshDisabled) {
+    try {
+      const res = await meApi();
+      authStore.setAuth({ user: res.data });
+    } catch (_) {
+      // not logged in; the auto-refresh interceptor will handle any in-flight
+      // requests that need a session
+    }
+  }
 });
 
 onBeforeUnmount(() => {
@@ -93,8 +107,8 @@ onBeforeUnmount(() => {
 });
 
 // After OAuth login the backend redirects with ?code=<one-time code>.
-// We exchange it for the real access token via POST /auth/exchange so the
-// token never lands in the URL / browser history / server access logs / Referer.
+// We exchange it via POST /auth/exchange; the backend then sets the
+// HttpOnly access_token cookie. JS never sees the token itself.
 watch(
   () => route.query.code,
   async (code) => {
@@ -104,11 +118,9 @@ watch(
     // accidentally bookmarked.
     router.replace({ query: {} });
     try {
-      const { data } = await exchangeApi(code);
-      const token = data.accessToken;
-      authStore.setAccessToken(token);
-      const res = await meApi();
-      authStore.setAuth({ accessToken: token, user: res.data });
+      await exchangeApi(code);          // sets access_token cookie server-side
+      const res = await meApi();        // fetches the user record using cookie
+      authStore.setAuth({ user: res.data });
       open("로그인 되었습니다.", "success");
     } catch (e) {
       console.error("OAuth code exchange failed", e);

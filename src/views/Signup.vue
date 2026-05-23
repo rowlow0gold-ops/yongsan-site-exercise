@@ -157,12 +157,16 @@ const canFinish = computed(() => {
 
 async function finishSignup() {
   try {
-    // 1) signup
+    // 1) signup (server replies generically; we can't tell from the response
+    //    whether the email was new or already taken — that's deliberate, see
+    //    audit: email enumeration mitigation)
     await signupApi(form.name, form.email, form.password);
 
-    // 2) auto login (optional but nice)
+    // 2) auto login (will fail if the email was taken with a different password)
     const res = await loginApi(form.email, form.password);
-    auth.setAuth(res.data); // expects { accessToken, user }
+    // Cookie auth: login response is the user record directly; the access
+    // token lives in an HttpOnly cookie now.
+    auth.setAuth({ user: res.data });
     markSubmitted();
 
     step.value = 3;
