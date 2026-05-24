@@ -103,7 +103,7 @@
 <script setup>
 import { computed, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { fetchBoardDetail, deleteBoardPost } from "@/api/board";
+import { fetchBoardDetail, unlockBoardPost, deleteBoardPost } from "@/api/board";
 import { useAuthStore } from "@/stores/auth";
 import { useAlert } from "@/composables/useAlert";
 import { useSeo } from "@/composables/useSeo";
@@ -154,15 +154,19 @@ async function confirmPw() {
   if (!validatePw()) return;
 
   if (pwAction.value === "view") {
-    // Try loading the private post with password
+    // Unlock the private guest post — password goes in the POST body, never the URL.
     try {
-      const res = await fetchBoardDetail(boardKey.value, id.value, pw.value);
+      const res = await unlockBoardPost(boardKey.value, id.value, pw.value);
       post.value = normalizeDetail(res.data);
       errorMsg.value = "";
       viewPassword.value = pw.value; // remember for edit/delete
       pwDialog.value = false;
     } catch (e) {
-      pwError.value = "비밀번호가 올바르지 않습니다.";
+      if (e?.response?.status === 429) {
+        pwError.value = "시도 횟수가 너무 많습니다. 잠시 후 다시 시도해주세요.";
+      } else {
+        pwError.value = "비밀번호가 올바르지 않습니다.";
+      }
     }
     return;
   }
