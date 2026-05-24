@@ -13,8 +13,16 @@ RUN npm run build
 
 FROM nginx:alpine
 COPY --from=build /app/dist /usr/share/nginx/html
+# Security headers for the SPA shell. The backend emits its own CSP on API
+# responses; this one covers the HTML / static assets that nginx serves.
 RUN echo 'server { \
     listen 80; \
+    add_header Content-Security-Policy "default-src '\''self'\''; script-src '\''self'\'' '\''unsafe-inline'\'' https://www.googletagmanager.com https://www.google-analytics.com; style-src '\''self'\'' '\''unsafe-inline'\'' https://fonts.googleapis.com https://cdn.jsdelivr.net; img-src '\''self'\'' data: https:; font-src '\''self'\'' data: https://fonts.gstatic.com https://cdn.jsdelivr.net; connect-src '\''self'\'' https://api.minhojan-world.site https://*.minhojan-world.site https://www.google-analytics.com https://*.ingest.sentry.io https://*.ingest.us.sentry.io; frame-ancestors '\''none'\''; base-uri '\''none'\''; form-action '\''self'\''" always; \
+    add_header X-Frame-Options "DENY" always; \
+    add_header X-Content-Type-Options "nosniff" always; \
+    add_header Referrer-Policy "no-referrer" always; \
+    add_header Permissions-Policy "geolocation=(), microphone=(), camera=()" always; \
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always; \
     location / { \
         root /usr/share/nginx/html; \
         index index.html; \
