@@ -72,24 +72,6 @@ onMounted(() => {
 });
 onUnmounted(() => clearInterval(timerId));
 
-function getExpMsFromJwt(token) {
-  if (!token) return null;
-  // just in case someone stored "Bearer xxx"
-  token = token.replace(/^Bearer\s+/i, "");
-
-  const parts = token.split(".");
-  if (parts.length !== 3) return null;
-
-  try {
-    const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
-    const padded = base64 + "===".slice((base64.length + 3) % 4);
-    const payload = JSON.parse(atob(padded));
-    return typeof payload.exp === "number" ? payload.exp * 1000 : null;
-  } catch {
-    return null;
-  }
-}
-
 function formatMs(ms) {
   ms = Math.max(0, ms);
   const totalSec = Math.floor(ms / 1000);
@@ -99,10 +81,20 @@ function formatMs(ms) {
   return h > 0 ? `${h}h ${m}m ${s}s` : `${m}m ${s}s`;
 }
 
-// JWT lifetime is no longer visible to JS (access token moved to HttpOnly
-// cookie). The countdown UI is removed; "expiring soon" prompts now happen
-// via the response interceptor's silent refresh on 401.
-const jwtLeftText = computed(() => "");
+// The access token itself is HttpOnly and unreachable from JS, but the
+// backend also sets a companion non-HttpOnly cookie `access_expires_at`
+// containing only the expiry timestamp (unix millis). That's safe to read
+// and lets us render the countdown.
+function readAccessExpMs() {
+  const m = document.cookie.match(/(?:^|;\s*)access_expires_at=(\d+)/);
+  return m ? Number(m[1]) : null;
+}
+
+const jwtLeftText = computed(() => {
+  const exp = readAccessExpMs();
+  if (!exp) return "";
+  return formatMs(exp - now.value);
+});
 
 async function handleAuthClick() {
   if (!auth.isAuthed) {
