@@ -13,8 +13,20 @@
 
       <v-spacer />
 
-      <!-- ✅ JWT time left -->
-      <div v-if="auth.isAuthed" class="jwt-left">⏳ {{ jwtLeftText }}</div>
+      <!-- ✅ JWT time left + manual refresh -->
+      <div v-if="auth.isAuthed" class="jwt-left">
+        ⏳ {{ jwtLeftText }}
+        <v-btn
+          variant="text"
+          size="x-small"
+          icon="mdi-refresh"
+          class="refresh-btn ml-1"
+          :loading="refreshing"
+          :disabled="refreshing"
+          aria-label="Refresh access token"
+          @click="handleRefresh"
+        />
+      </div>
 
       <div class="util-actions">
         <!-- ✅ open popup -->
@@ -48,7 +60,7 @@ import LoginDialog from "@/components/auth/LoginDialog.vue";
 import { useRouter } from "vue-router";
 import { useAuthStore } from "@/stores/auth";
 import { useAlert } from "@/composables/useAlert";
-import { logoutApi } from "@/api/auth";
+import { logoutApi, refreshApi } from "@/api/auth";
 
 const { open } = useAlert();
 
@@ -95,6 +107,22 @@ const jwtLeftText = computed(() => {
   if (!exp) return "";
   return formatMs(exp - now.value);
 });
+
+const refreshing = ref(false);
+async function handleRefresh() {
+  if (refreshing.value) return;
+  refreshing.value = true;
+  try {
+    await refreshApi();
+    now.value = Date.now();
+    open("토큰이 갱신되었습니다.", "success");
+  } catch (e) {
+    console.error(e);
+    open("토큰 갱신 실패. 다시 로그인해주세요.", "error");
+  } finally {
+    refreshing.value = false;
+  }
+}
 
 async function handleAuthClick() {
   if (!auth.isAuthed) {
@@ -188,5 +216,12 @@ function onLoginSuccess() {
   display: flex;
   align-items: center;
   color: #111;
+}
+
+.refresh-btn {
+  color: #111 !important;
+  min-width: 0 !important;
+  width: 24px !important;
+  height: 24px !important;
 }
 </style>
