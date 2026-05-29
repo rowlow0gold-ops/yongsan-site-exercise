@@ -7,121 +7,63 @@
         </v-btn>
       </div>
 
-      <!-- STEP 1 — enter email -->
-      <div v-if="step === 'email'">
-        <h2 class="text-h6 mb-1">로그인</h2>
-        <p class="text-body-2 text-medium-emphasis mb-4">계정 이메일을 입력하세요.</p>
-        <v-text-field
-          v-model="email"
-          label="이메일"
-          type="email"
-          variant="outlined"
-          density="comfortable"
-          name="email"
-          autocomplete="username webauthn"
-          autofocus
-          @keyup.enter="goNext"
-        />
+      <h2 class="text-h6 mb-1">로그인</h2>
+      <p class="text-body-2 text-medium-emphasis mb-4">
+        Passkey, Google, 또는 Kakao로 로그인하세요. 비밀번호는 더 이상 사용하지 않습니다.
+      </p>
 
-        <!-- Turnstile (still required to fight credential-stuffing) -->
-        <div class="ts-label">Let us know you are human</div>
-        <div class="ts-frame">
-          <div ref="turnstileBox" style="min-height: 65px" />
-        </div>
+      <v-text-field
+        v-model="email"
+        label="이메일"
+        type="email"
+        variant="outlined"
+        density="comfortable"
+        name="email"
+        autocomplete="username webauthn"
+        autofocus
+        class="mb-2"
+      />
 
-        <v-alert v-if="error" type="error" variant="tonal" class="mb-3">{{ error }}</v-alert>
-
-        <v-btn
-          block color="primary" size="large" class="mt-2"
-          :disabled="!email || !turnstileToken"
-          @click="goNext"
-        >
-          다음
-        </v-btn>
+      <!-- Turnstile -->
+      <div class="ts-label">Let us know you are human</div>
+      <div class="ts-frame">
+        <div ref="turnstileBox" style="min-height: 65px" />
       </div>
 
-      <!-- STEP 2 — passkey primary, password fallback -->
-      <div v-else-if="step === 'method'">
-        <div class="d-flex align-center mb-2">
-          <v-btn icon size="small" variant="text" class="mr-1" @click="step = 'email'">
-            <v-icon>mdi-arrow-left</v-icon>
-          </v-btn>
-          <h2 class="text-h6">{{ email }}</h2>
-        </div>
-        <p class="text-body-2 text-medium-emphasis mb-4">로그인 방법을 선택하세요.</p>
+      <v-alert v-if="error" type="error" variant="tonal" class="mb-3">{{ error }}</v-alert>
 
-        <v-btn
-          block color="primary" size="large" class="mb-3"
-          prepend-icon="mdi-key-variant"
-          :loading="pkLoading"
-          @click="passkeyLogin"
-        >
-          Passkey로 로그인
-        </v-btn>
+      <v-btn
+        block color="primary" size="large" class="mb-3"
+        prepend-icon="mdi-key-variant"
+        :loading="pkLoading"
+        :disabled="!turnstileToken"
+        @click="passkeyLogin"
+      >
+        Passkey로 로그인
+      </v-btn>
 
-        <div class="text-center my-2 text-body-2">
-          <a class="text-primary cursor-pointer" @click="step = 'password'">
-            비밀번호로 로그인
-          </a>
-        </div>
-      </div>
-
-      <!-- STEP 3 — password fallback -->
-      <div v-else-if="step === 'password'">
-        <div class="d-flex align-center mb-2">
-          <v-btn icon size="small" variant="text" class="mr-1" @click="step = 'method'">
-            <v-icon>mdi-arrow-left</v-icon>
-          </v-btn>
-          <h2 class="text-h6">{{ email }}</h2>
-        </div>
-        <p class="text-body-2 text-medium-emphasis mb-4">비밀번호를 입력하세요.</p>
-
-        <v-text-field
-          v-model="password"
-          label="비밀번호"
-          type="password"
-          variant="outlined"
-          density="comfortable"
-          name="password"
-          autocomplete="current-password"
-          autofocus
-          @keyup.enter="login"
-        />
-
-        <v-alert v-if="error" type="error" variant="tonal" class="mb-3">{{ error }}</v-alert>
-
-        <v-btn
-          block color="primary" size="large" class="mt-2"
-          :loading="loading"
-          @click="login"
-        >
-          로그인
-        </v-btn>
-      </div>
-
-      <v-divider class="my-4">또는</v-divider>
-
-      <div class="text-center mb-3">
-        계정이 없으신가요?
-        <span class="text-primary cursor-pointer" @click="goSignup">회원가입</span>
-      </div>
+      <v-divider class="my-3">또는</v-divider>
 
       <v-btn block variant="outlined" class="mb-2" prepend-icon="mdi-google" @click="social('google')">
         Google로 로그인
       </v-btn>
-      <v-btn block variant="flat" @click="social('kakao')" style="background: #fee500; color: #000">
+      <v-btn block variant="flat" class="mb-3" @click="social('kakao')" style="background: #fee500; color: #000">
         <v-icon class="mr-2">mdi-chat</v-icon>
         카카오로 로그인
       </v-btn>
+
+      <div class="text-center mt-2 text-body-2">
+        계정이 없으신가요?
+        <span class="text-primary cursor-pointer" @click="goSignup">회원가입</span>
+      </div>
     </v-card>
   </v-dialog>
 </template>
 
 <script setup>
-import { computed, ref, watch, nextTick } from "vue";
+import { computed, ref, watch, nextTick, onMounted, onUnmounted } from "vue";
 import { useRouter } from "vue-router";
 import { useAuthStore } from "@/stores/auth";
-import { loginApi } from "@/api/auth";
 import { loginStart as pkLoginStart, loginFinish as pkLoginFinish } from "@/api/webauthn";
 import { bufToB64Url, b64UrlToBuf } from "@/lib/webauthn";
 import { useAlert } from "@/composables/useAlert";
@@ -137,19 +79,18 @@ const model = computed({
   set: (v) => emit("update:modelValue", v),
 });
 
-const step = ref("email"); // 'email' | 'method' | 'password'
 const email = ref("");
-const password = ref("");
 const error = ref("");
-const loading = ref(false);
 const pkLoading = ref(false);
+const turnstileBox = ref(null);
+const turnstileToken = ref("");
 
 // --- Cloudflare Turnstile (explicit render) ---
 const TURNSTILE_SITEKEY = "0x4AAAAAADYJm08LeNJZIsCY";
-const turnstileBox = ref(null);
-const turnstileToken = ref("");
 let turnstileWidgetId = null;
-if (typeof window !== "undefined" && !document.getElementById("cf-turnstile-script")) {
+function ensureTurnstileScript() {
+  if (typeof window === "undefined") return;
+  if (document.getElementById("cf-turnstile-script")) return;
   const s = document.createElement("script");
   s.id = "cf-turnstile-script";
   s.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
@@ -159,7 +100,10 @@ if (typeof window !== "undefined" && !document.getElementById("cf-turnstile-scri
 function mountTurnstile() {
   if (!turnstileBox.value) return;
   if (!window.turnstile) { setTimeout(mountTurnstile, 200); return; }
-  if (turnstileWidgetId != null) { try { window.turnstile.reset(turnstileWidgetId); } catch (_) {} return; }
+  if (turnstileWidgetId != null) {
+    try { window.turnstile.reset(turnstileWidgetId); } catch (_) {}
+    return;
+  }
   turnstileWidgetId = window.turnstile.render(turnstileBox.value, {
     sitekey: TURNSTILE_SITEKEY,
     callback: (t) => { turnstileToken.value = t || ""; },
@@ -175,40 +119,16 @@ function unmountTurnstile() {
   turnstileWidgetId = null;
 }
 
-watch(() => model.value, async (openNow) => {
-  if (openNow) {
-    step.value = "email";
-    email.value = ""; password.value = ""; error.value = "";
-    await nextTick();
-    mountTurnstile();
-    startConditionalPasskey(); // surface passkey via the email autofill chip
-  } else {
-    unmountTurnstile();
-    if (conditionalAbort) { try { conditionalAbort.abort(); } catch (_) {} conditionalAbort = null; }
-  }
-}, { immediate: true });
-
-function closeDialog() {
-  model.value = false;
-}
-
-async function goNext() {
-  if (!email.value || !turnstileToken.value) return;
-  step.value = "method";
-}
-
-
+// --- Conditional-UI passkey (background listener on the email autofill chip) ---
 let conditionalAbort = null;
 async function startConditionalPasskey() {
   if (typeof window === "undefined" || !window.PublicKeyCredential) return;
   try {
-    if (typeof PublicKeyCredential.isConditionalMediationAvailable === "function") {
-      const supported = await PublicKeyCredential.isConditionalMediationAvailable();
-      if (!supported) return;
-    } else {
-      return;
-    }
+    if (typeof PublicKeyCredential.isConditionalMediationAvailable !== "function") return;
+    const supported = await PublicKeyCredential.isConditionalMediationAvailable();
+    if (!supported) return;
     const { data: opts } = await pkLoginStart();
+    if (conditionalAbort) { try { conditionalAbort.abort(); } catch (_) {} }
     conditionalAbort = new AbortController();
     const publicKey = {
       challenge: b64UrlToBuf(opts.challenge),
@@ -220,32 +140,36 @@ async function startConditionalPasskey() {
         id: b64UrlToBuf(c.id),
       })),
     };
-    // This sits in the background — resolves only when the user picks
-    // the passkey from the email field's autofill chip.
     const assertion = await navigator.credentials.get({
       publicKey,
       mediation: "conditional",
       signal: conditionalAbort.signal,
     });
     if (!assertion) return;
-    const credentialId = bufToB64Url(assertion.rawId);
-    const { data: user } = await pkLoginFinish({ credentialId, challenge: opts.challenge });
-    auth.setAuth({ user });
-    open("Passkey 로그인 성공!", "success");
-    model.value = false;
-    emit("success");
-    try {
-      const rname = router.currentRoute.value?.name;
-      if (!rname || rname === "notFound") router.push("/");
-    } catch (_) {}
+    await completePasskey(assertion, opts.challenge);
   } catch (e) {
-    // Most common: AbortError when the dialog closes — silently ignore.
     if (e?.name !== "AbortError") console.warn("conditional passkey:", e);
   }
 }
 
+async function completePasskey(assertion, challenge) {
+  const credentialId = bufToB64Url(assertion.rawId);
+  const { data: user } = await pkLoginFinish({ credentialId, challenge });
+  auth.setAuth({ user });
+  open("Passkey 로그인 성공!", "success");
+  model.value = false;
+  emit("success");
+  try {
+    const rname = router.currentRoute.value?.name;
+    if (!rname || rname === "notFound") router.push("/");
+  } catch (_) {}
+}
+
 async function passkeyLogin() {
   if (pkLoading.value) return;
+  // Abort the conditional listener before starting an explicit get(), or
+  // browser throws 'A request is already pending'.
+  if (conditionalAbort) { try { conditionalAbort.abort(); } catch (_) {} conditionalAbort = null; }
   pkLoading.value = true;
   error.value = "";
   try {
@@ -262,16 +186,7 @@ async function passkeyLogin() {
     };
     const assertion = await navigator.credentials.get({ publicKey });
     if (!assertion) throw new Error("Passkey canceled");
-    const credentialId = bufToB64Url(assertion.rawId);
-    const { data: user } = await pkLoginFinish({ credentialId, challenge: opts.challenge });
-    auth.setAuth({ user });
-    open("Passkey 로그인 성공!", "success");
-    model.value = false;
-    emit("success");
-    try {
-      const rname = router.currentRoute.value?.name;
-      if (!rname || rname === "notFound") router.push("/");
-    } catch (_) {}
+    await completePasskey(assertion, opts.challenge);
   } catch (e) {
     console.error(e);
     error.value = e?.message?.includes("canceled") ? "취소되었습니다." : "Passkey 로그인 실패";
@@ -280,33 +195,42 @@ async function passkeyLogin() {
   }
 }
 
-async function login() {
-  if (loading.value) return;
-  loading.value = true;
-  error.value = "";
-  try {
-    const { data: user } = await loginApi(email.value, password.value, turnstileToken.value);
-    auth.setAuth({ user });
-    open("로그인 되었습니다.", "success");
-    model.value = false;
-    emit("success");
-  } catch (e) {
-    console.error(e);
-    error.value = e?.response?.data?.message || "로그인 실패";
-  } finally {
-    loading.value = false;
-  }
-}
-
-function goSignup() {
-  model.value = false;
-  emit("go-signup");
-}
-
+function closeDialog()  { model.value = false; }
+function goSignup()     { model.value = false; emit("go-signup"); }
 function social(provider) {
   const base = import.meta.env.VITE_API_BASE_URL || "";
   window.location.href = `${base}/oauth2/authorization/${provider}`;
 }
+
+// React to open/close. NOT immediate — avoids TDZ on the functions below.
+watch(() => model.value, async (openNow) => {
+  if (openNow) {
+    email.value = ""; error.value = "";
+    ensureTurnstileScript();
+    await nextTick();
+    mountTurnstile();
+    startConditionalPasskey();
+  } else {
+    unmountTurnstile();
+    if (conditionalAbort) { try { conditionalAbort.abort(); } catch (_) {} conditionalAbort = null; }
+  }
+});
+
+// If the dialog is already open at mount time (e.g. URL ?login=1 path),
+// kick the same flow once. By now all functions are defined.
+onMounted(async () => {
+  if (model.value) {
+    ensureTurnstileScript();
+    await nextTick();
+    mountTurnstile();
+    startConditionalPasskey();
+  }
+});
+
+onUnmounted(() => {
+  unmountTurnstile();
+  if (conditionalAbort) { try { conditionalAbort.abort(); } catch (_) {} conditionalAbort = null; }
+});
 </script>
 
 <style scoped>
@@ -320,7 +244,7 @@ function social(provider) {
   border: 1px solid #e5e7eb;
   border-radius: 6px;
   padding: 8px;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 .cursor-pointer { cursor: pointer; }
 </style>
