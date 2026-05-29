@@ -193,7 +193,7 @@
 
             <div class="d-flex align-center ga-2">
             <v-btn variant="outlined" @click="goList">목록</v-btn>
-            <v-btn color="primary" type="submit">등록</v-btn>
+            <v-btn color="primary" type="submit" :disabled="!auth.isAuthed && !turnstileToken">등록</v-btn>
             </div>
           </v-col>
         </v-row>
