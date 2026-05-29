@@ -1,10 +1,11 @@
 // src/api/auth.js
 import api from "@/lib/api";
 
-export function loginApi(email, password) {
+export function loginApi(email, password, cfTurnstileToken) {
   return api.post("/auth/login", {
     email,
     password,
+    cfTurnstileToken,
   });
 }
 

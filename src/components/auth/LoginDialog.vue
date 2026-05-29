@@ -26,6 +26,15 @@
         @keyup.enter="login"
       />
 
+      <!-- Cloudflare Turnstile -->
+      <div
+        class="cf-turnstile mb-2"
+        data-sitekey="0x4AAAAAADYJm08LeNJZIsCY"
+        data-callback="onLoginTurnstileSuccess"
+        data-error-callback="onLoginTurnstileError"
+        data-expired-callback="onLoginTurnstileExpired"
+      />
+
       <v-alert v-if="error" type="error" variant="tonal" class="mb-3">
         {{ error }}
       </v-alert>
@@ -78,6 +87,24 @@ import { computed, ref, watch } from "vue";
 import { useAuthStore } from "@/stores/auth";
 import { loginApi } from "@/api/auth";
 
+// --- Cloudflare Turnstile ---
+const turnstileToken = ref("");
+function onLoginTurnstileSuccess(t) { turnstileToken.value = t || ""; }
+function onLoginTurnstileError()    { turnstileToken.value = ""; }
+function onLoginTurnstileExpired()  { turnstileToken.value = ""; }
+if (typeof window !== "undefined") {
+  window.onLoginTurnstileSuccess = onLoginTurnstileSuccess;
+  window.onLoginTurnstileError   = onLoginTurnstileError;
+  window.onLoginTurnstileExpired = onLoginTurnstileExpired;
+  if (!document.getElementById("cf-turnstile-script")) {
+    const __s = document.createElement("script");
+    __s.id = "cf-turnstile-script";
+    __s.src = "https://challenges.cloudflare.com/turnstile/v0/api.js";
+    __s.async = true; __s.defer = true;
+    document.head.appendChild(__s);
+  }
+}
+
 const props = defineProps({ modelValue: Boolean });
 const emit = defineEmits(["update:modelValue", "success", "go-signup"]);
 
@@ -117,7 +144,7 @@ async function login() {
 
   loading.value = true;
   try {
-    const { data } = await loginApi(email.value, password.value);
+    const { data } = await loginApi(email.value, password.value, turnstileToken.value);
 
     // Cookie auth: login sets the access_token cookie server-side and returns
     // the user record directly (no token in body).

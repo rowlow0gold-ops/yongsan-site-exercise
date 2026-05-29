@@ -197,6 +197,25 @@
 
 <script setup>
 import { ref, computed, onMounted } from "vue";
+
+// --- Cloudflare Turnstile ---
+import { ref as __cfRef } from "vue";
+const turnstileToken = __cfRef("");
+function onWriteTurnstileSuccess(t) { turnstileToken.value = t || ""; }
+function onWriteTurnstileError()    { turnstileToken.value = ""; }
+function onWriteTurnstileExpired()  { turnstileToken.value = ""; }
+if (typeof window !== "undefined") {
+  window.onWriteTurnstileSuccess = onWriteTurnstileSuccess;
+  window.onWriteTurnstileError   = onWriteTurnstileError;
+  window.onWriteTurnstileExpired = onWriteTurnstileExpired;
+  if (!document.getElementById("cf-turnstile-script")) {
+    const __s = document.createElement("script");
+    __s.id = "cf-turnstile-script";
+    __s.src = "https://challenges.cloudflare.com/turnstile/v0/api.js";
+    __s.async = true; __s.defer = true;
+    document.head.appendChild(__s);
+  }
+}
 import { useRouter, useRoute } from "vue-router";
 import { useAuthStore } from "@/stores/auth";
 import { useAlert } from "@/composables/useAlert";
@@ -314,7 +333,7 @@ async function onSubmit() {
   };
 
   try {
-    await api.post(`/api/boards/${boardKey.value}/posts`, payload);
+    await api.post(`/api/boards/${boardKey.value}/posts`, { ...payload, cfTurnstileToken: turnstileToken.value });
     markSubmitted();
     open("게시글이 등록되었습니다.", "success");
     goList();
