@@ -16,7 +16,7 @@
         variant="outlined"
         density="comfortable"
         name="email"
-        autocomplete="username webauthn"
+        autocomplete="username"
         autofocus
         class="mb-2"
         :rules="emailRules"
@@ -131,38 +131,12 @@ function unmountTurnstile() {
   turnstileWidgetId = null;
 }
 
-// --- Conditional-UI passkey (background listener on the email autofill chip) ---
-let conditionalAbort = null;
-async function startConditionalPasskey() {
-  if (typeof window === "undefined" || !window.PublicKeyCredential) return;
-  try {
-    if (typeof PublicKeyCredential.isConditionalMediationAvailable !== "function") return;
-    const supported = await PublicKeyCredential.isConditionalMediationAvailable();
-    if (!supported) return;
-    const { data: opts } = await pkLoginStart();
-    if (conditionalAbort) { try { conditionalAbort.abort(); } catch (_) {} }
-    conditionalAbort = new AbortController();
-    const publicKey = {
-      challenge: b64UrlToBuf(opts.challenge),
-      rpId: opts.rpId,
-      userVerification: opts.userVerification || "preferred",
-      timeout: opts.timeout || 60000,
-      allowCredentials: (opts.allowCredentials || []).map((c) => ({
-        type: "public-key",
-        id: b64UrlToBuf(c.id),
-      })),
-    };
-    const assertion = await navigator.credentials.get({
-      publicKey,
-      mediation: "conditional",
-      signal: conditionalAbort.signal,
-    });
-    if (!assertion) return;
-    await completePasskey(assertion, opts.challenge);
-  } catch (e) {
-    if (e?.name !== "AbortError") console.warn("conditional passkey:", e);
-  }
-}
+// NOTE: WebAuthn Conditional UI was removed deliberately.
+// It auto-fires navigator.credentials.get({mediation: "conditional"}) which
+// causes the OS to show the saved-passkey sheet without the user ever
+// typing an email. That bypasses the email-required gate on the Passkey
+// button. Microsoft-style enforcement: passkey auth only fires from the
+// explicit gated button below, never on dialog open.
 
 async function completePasskey(assertion, challenge) {
   const credentialId = bufToB64Url(assertion.rawId);
@@ -179,9 +153,13 @@ async function completePasskey(assertion, challenge) {
 
 async function passkeyLogin() {
   if (pkLoading.value) return;
-  // Abort the conditional listener before starting an explicit get(), or
-  // browser throws 'A request is already pending'.
-  if (conditionalAbort) { try { conditionalAbort.abort(); } catch (_) {} conditionalAbort = null; }
+  // Hard re-check the email gate — defense in depth against a button that
+  // somehow becomes clickable while the email is empty/invalid (devtools,
+  // accessibility tools, etc).
+  if (!isEmailValid.value) {
+    error.value = "유효한 이메일을 입력해주세요.";
+    return;
+  }
   pkLoading.value = true;
   error.value = "";
   try {
@@ -221,10 +199,9 @@ watch(() => model.value, async (openNow) => {
     ensureTurnstileScript();
     await nextTick();
     mountTurnstile();
-    startConditionalPasskey();
+    // Conditional UI deliberately not started — see note above.
   } else {
     unmountTurnstile();
-    if (conditionalAbort) { try { conditionalAbort.abort(); } catch (_) {} conditionalAbort = null; }
   }
 });
 
@@ -235,13 +212,11 @@ onMounted(async () => {
     ensureTurnstileScript();
     await nextTick();
     mountTurnstile();
-    startConditionalPasskey();
   }
 });
 
 onUnmounted(() => {
   unmountTurnstile();
-  if (conditionalAbort) { try { conditionalAbort.abort(); } catch (_) {} conditionalAbort = null; }
 });
 </script>
 
