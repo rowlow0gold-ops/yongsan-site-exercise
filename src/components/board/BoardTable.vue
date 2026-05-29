@@ -1,7 +1,22 @@
 <template>
   <v-card class="rounded-lg" elevation="1">
     <v-card-text class="pa-0">
-      <template v-if="mdAndUp">
+      <!-- ✅ Skeleton while loading — exactly the size & shape of the real list so no jump -->
+      <div v-if="loading" class="board-skel">
+        <template v-if="mdAndUp">
+          <div class="skel-row skel-head" />
+          <div class="skel-row" v-for="i in 10" :key="'sk-'+i" />
+        </template>
+        <template v-else>
+          <div class="skel-mobile" v-for="i in 8" :key="'skm-'+i">
+            <div class="skel-line skel-line-title" />
+            <div class="skel-line skel-line-meta" />
+            <div class="skel-line skel-line-meta" />
+          </div>
+        </template>
+      </div>
+
+      <template v-else-if="mdAndUp">
         <v-data-table
           :headers="headers"
           :items="items"
@@ -195,6 +210,45 @@ function goWrite() {
 }
 .mobile-post-item:active {
   background: rgba(0, 0, 0, 0.04);
+}
+
+/* ✅ Skeleton (shimmer) — sized to the real rows so the layout doesn't jump
+   when v-data-table replaces it. */
+.board-skel {
+  padding: 8px 4px;
+}
+.skel-row {
+  height: 56px; /* matches row height with 20px vertical padding + ~16px text */
+  border-bottom: 1px solid #f1f5f9;
+  background: linear-gradient(90deg, #f3f4f6 0%, #e5e7eb 50%, #f3f4f6 100%);
+  background-size: 200% 100%;
+  animation: skel-shimmer 1.2s linear infinite;
+  border-radius: 4px;
+  margin: 6px 0;
+}
+.skel-head {
+  height: 48px;
+  background: linear-gradient(90deg, #e5e7eb 0%, #d1d5db 50%, #e5e7eb 100%);
+  background-size: 200% 100%;
+  animation: skel-shimmer 1.2s linear infinite;
+}
+.skel-mobile {
+  padding: 16px 4px;
+  border-bottom: 1px solid #f1f5f9;
+}
+.skel-line {
+  height: 14px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #f3f4f6 0%, #e5e7eb 50%, #f3f4f6 100%);
+  background-size: 200% 100%;
+  animation: skel-shimmer 1.2s linear infinite;
+  margin: 8px 0;
+}
+.skel-line-title { width: 70%; height: 18px; }
+.skel-line-meta  { width: 40%; }
+@keyframes skel-shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
 
 /* ✅ Prevent pagination from shrinking/collapsing into arrows-only */

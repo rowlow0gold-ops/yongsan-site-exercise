@@ -35,11 +35,16 @@
       </div>
     </div>
 
-    <!-- ✅ Content Area -->
+    <!-- ✅ Content Area — skeleton during fetch, fade-in once loaded -->
     <div class="content-area">
-      <p v-for="(p, idx) in post.content" :key="idx" class="paragraph">
-        {{ p }}
-      </p>
+      <div v-if="loading" class="detail-skel">
+        <div class="detail-skel-line" v-for="i in 8" :key="'ds-'+i" />
+      </div>
+      <template v-else>
+        <p v-for="(p, idx) in post.content" :key="idx" class="paragraph">
+          {{ p }}
+        </p>
+      </template>
     </div>
     <div class="d-flex align-center ga-2">
       <!-- Left group -->
@@ -505,6 +510,27 @@ function goList() {
 
 .paragraph:last-child {
   margin-bottom: 0;
+}
+
+/* Skeleton paragraphs — sized to look like real prose so no shift when real content arrives */
+.detail-skel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.detail-skel-line {
+  height: 16px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #f3f4f6 0%, #e5e7eb 50%, #f3f4f6 100%);
+  background-size: 200% 100%;
+  animation: skel-shimmer 1.2s linear infinite;
+}
+.detail-skel-line:nth-child(odd)  { width: 95%; }
+.detail-skel-line:nth-child(even) { width: 80%; }
+.detail-skel-line:last-child       { width: 45%; }
+@keyframes skel-shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
 
 /* Cross-fade when the detail body swaps in (after fetch) */
