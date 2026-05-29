@@ -145,7 +145,7 @@ router.beforeEach(async (to) => {
   // ✅ board2: edit/write requires login
   if (isBoard2Protected && !auth.isAuthed) {
     open("로그인이 필요합니다.", "error", 2000);
-    return { path: "/" };
+    return false;
   }
 
   // ✅ board2 detail: guest stays on list with alert
@@ -166,7 +166,7 @@ router.beforeEach(async (to) => {
         // Member post → require login + owner/admin check
         if (!auth.isAuthed) {
           open("로그인이 필요합니다.", "error", 2000);
-          return { path: "/" };
+          return false;
         }
         const ownerId = Number(post.authorUserId);
         const myId = Number(auth.user?.id);
@@ -174,20 +174,26 @@ router.beforeEach(async (to) => {
 
         if (ownerId !== myId && !isAdmin) {
           open("작성자만 수정할 수 있습니다.", "error", 2000);
-          return { path: "/" };
+          return false;
         }
       }
       // Guest post (no authorUserId) → allow, edit page handles password
     } catch (e) {
+      // Guest-private post: backend returns 403 + { guestPost: true } when no
+      // password is supplied. The edit page itself re-asks for the password
+      // (or pulls it from sessionStorage), so let navigation proceed.
+      if (e?.response?.status === 403 && e?.response?.data?.guestPost === true) {
+        return true;
+      }
       open("접근할 수 없습니다.", "error", 2000);
-      return { path: "/" };
+      return false;
     }
   }
 
   // existing requiresAuth rule
   if (to.meta?.requiresAuth && !auth.isAuthed) {
     open("로그인이 필요합니다.", "error", 2000);
-    return { path: "/" };
+    return false;
   }
 
   return true;
