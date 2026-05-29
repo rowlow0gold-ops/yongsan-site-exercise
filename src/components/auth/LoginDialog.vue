@@ -21,7 +21,7 @@
         class="mb-2"
         :rules="emailRules"
         validate-on="input lazy"
-        :error-messages="email && !isEmailValid ? '올바른 이메일 형식이 아닙니다.' : ''"
+        required
       />
 
       <!-- Turnstile -->
@@ -36,7 +36,7 @@
         block color="primary" size="large" class="mb-3"
         prepend-icon="mdi-key-variant"
         :loading="pkLoading"
-        :disabled="!turnstileToken"
+        :disabled="!turnstileToken || !isEmailValid"
         @click="passkeyLogin"
       >
         Passkey로 로그인
@@ -85,13 +85,16 @@ const pkLoading = ref(false);
 const turnstileBox = ref(null);
 const turnstileToken = ref("");
 
-// Email is only used as a hint for WebAuthn conditional UI (browser
-// matches it to a saved passkey) — but if the user typed garbage we
-// shouldn't silently treat it as a valid hint. Same regex as Signup.
+// Microsoft-style: identifier required before any sign-in method can be
+// used. The email is sent to the server as part of WebAuthn loginStart
+// so we can narrow allowCredentials to that user's passkeys (also lets
+// us reject 'unknown account' early instead of generic credential
+// rejection later).
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const isEmailValid = computed(() => EMAIL_RE.test(email.value || ""));
 const emailRules = [
-  (v) => !v || EMAIL_RE.test(v) || "올바른 이메일 형식이 아닙니다.",
+  (v) => !!v || "이메일을 입력해주세요.",
+  (v) => EMAIL_RE.test(v || "") || "유효한 이메일을 입력해주세요.",
 ];
 
 // --- Cloudflare Turnstile (explicit render) ---
