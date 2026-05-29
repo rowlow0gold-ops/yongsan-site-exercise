@@ -1,94 +1,115 @@
 <template>
-  <v-dialog v-model="model" max-width="420">
+  <v-dialog v-model="model" max-width="440" persistent>
     <v-card rounded="xl" class="pa-6">
-      <div class="d-flex align-center justify-space-between mb-4">
-        <v-btn icon variant="text" @click="model = false">
+      <div class="d-flex align-center justify-space-between mb-2">
+        <v-btn icon variant="text" @click="closeDialog">
           <v-icon>mdi-close</v-icon>
         </v-btn>
       </div>
 
-      <v-text-field
-        v-model="email"
-        label="이메일"
-        type="email"
-        variant="outlined"
-        density="comfortable"
-        class="mb-2"
-        name="email"
-        autocomplete="username webauthn"
-      />
+      <!-- STEP 1 — enter email -->
+      <div v-if="step === 'email'">
+        <h2 class="text-h6 mb-1">로그인</h2>
+        <p class="text-body-2 text-medium-emphasis mb-4">계정 이메일을 입력하세요.</p>
+        <v-text-field
+          v-model="email"
+          label="이메일"
+          type="email"
+          variant="outlined"
+          density="comfortable"
+          name="email"
+          autocomplete="username webauthn"
+          autofocus
+          @keyup.enter="goNext"
+        />
 
-      <v-text-field
-        v-model="password"
-        label="비밀번호"
-        type="password"
-        variant="outlined"
-        density="comfortable"
-        class="mb-2"
-        name="password"
-        autocomplete="current-password"
-        @keyup.enter="login"
-      />
+        <!-- Turnstile (still required to fight credential-stuffing) -->
+        <div class="ts-label">Let us know you are human</div>
+        <div class="ts-frame">
+          <div ref="turnstileBox" style="min-height: 65px" />
+        </div>
 
-      <!-- Cloudflare Turnstile — explicit render so it survives dialog mount/unmount -->
-      <div class="ts-label">Let us know you are human</div>
-      <div class="ts-frame">
-        <div ref="turnstileBox" style="min-height: 65px" />
+        <v-alert v-if="error" type="error" variant="tonal" class="mb-3">{{ error }}</v-alert>
+
+        <v-btn
+          block color="primary" size="large" class="mt-2"
+          :disabled="!email || !turnstileToken"
+          @click="goNext"
+        >
+          다음
+        </v-btn>
       </div>
 
-      <v-alert v-if="error" type="error" variant="tonal" class="mb-3">
-        {{ error }}
-      </v-alert>
-      <v-btn
-        block
-        color="primary"
-        size="large"
-        class="mt-2"
-        :loading="loading"
-        :disabled="!turnstileToken"
-        @click="login"
-      >
-        로그인
-      </v-btn>
+      <!-- STEP 2 — passkey primary, password fallback -->
+      <div v-else-if="step === 'method'">
+        <div class="d-flex align-center mb-2">
+          <v-btn icon size="small" variant="text" class="mr-1" @click="step = 'email'">
+            <v-icon>mdi-arrow-left</v-icon>
+          </v-btn>
+          <h2 class="text-h6">{{ email }}</h2>
+        </div>
+        <p class="text-body-2 text-medium-emphasis mb-4">로그인 방법을 선택하세요.</p>
 
-      <v-btn
-        block
-        variant="outlined"
-        size="large"
-        class="mt-2"
-        prepend-icon="mdi-key-variant"
-        :loading="pkLoading"
-        @click="passkeyLogin"
-      >
-        Passkey로 로그인
-      </v-btn>
+        <v-btn
+          block color="primary" size="large" class="mb-3"
+          prepend-icon="mdi-key-variant"
+          :loading="pkLoading"
+          @click="passkeyLogin"
+        >
+          Passkey로 로그인
+        </v-btn>
+
+        <div class="text-center my-2 text-body-2">
+          <a class="text-primary cursor-pointer" @click="step = 'password'">
+            비밀번호로 로그인
+          </a>
+        </div>
+      </div>
+
+      <!-- STEP 3 — password fallback -->
+      <div v-else-if="step === 'password'">
+        <div class="d-flex align-center mb-2">
+          <v-btn icon size="small" variant="text" class="mr-1" @click="step = 'method'">
+            <v-icon>mdi-arrow-left</v-icon>
+          </v-btn>
+          <h2 class="text-h6">{{ email }}</h2>
+        </div>
+        <p class="text-body-2 text-medium-emphasis mb-4">비밀번호를 입력하세요.</p>
+
+        <v-text-field
+          v-model="password"
+          label="비밀번호"
+          type="password"
+          variant="outlined"
+          density="comfortable"
+          name="password"
+          autocomplete="current-password"
+          autofocus
+          @keyup.enter="login"
+        />
+
+        <v-alert v-if="error" type="error" variant="tonal" class="mb-3">{{ error }}</v-alert>
+
+        <v-btn
+          block color="primary" size="large" class="mt-2"
+          :loading="loading"
+          @click="login"
+        >
+          로그인
+        </v-btn>
+      </div>
 
       <v-divider class="my-4">또는</v-divider>
 
-      <div class="text-center mt-4">
+      <div class="text-center mb-3">
         계정이 없으신가요?
-        <span class="text-primary cursor-pointer" @click="goSignup">
-          회원가입
-        </span>
+        <span class="text-primary cursor-pointer" @click="goSignup">회원가입</span>
       </div>
 
-      <v-btn
-        block
-        variant="outlined"
-        class="mb-3"
-        prepend-icon="mdi-google"
-        @click="social('google')"
-      >
+      <v-btn block variant="outlined" class="mb-2" prepend-icon="mdi-google" @click="social('google')">
         Google로 로그인
       </v-btn>
-
-      <v-btn
-        block
-        class="mb-4"
-        variant="flat"
-        @click="social('kakao')"
-        style="background: #fee500; color: #000"
-      >
+      <v-btn block variant="flat" @click="social('kakao')" style="background: #fee500; color: #000">
         <v-icon class="mr-2">mdi-chat</v-icon>
         카카오로 로그인
       </v-btn>
@@ -97,82 +118,48 @@
 </template>
 
 <script setup>
-import { computed, ref, watch } from "vue";
+import { computed, ref, watch, nextTick } from "vue";
 import { useRouter } from "vue-router";
-const router = useRouter();
 import { useAuthStore } from "@/stores/auth";
 import { loginApi } from "@/api/auth";
 import { loginStart as pkLoginStart, loginFinish as pkLoginFinish } from "@/api/webauthn";
 import { bufToB64Url, b64UrlToBuf } from "@/lib/webauthn";
+import { useAlert } from "@/composables/useAlert";
 
+const router = useRouter();
+const auth = useAuthStore();
+const { open } = useAlert();
+const emit = defineEmits(["success", "go-signup", "update:modelValue"]);
+const props = defineProps({ modelValue: Boolean });
+
+const model = computed({
+  get: () => props.modelValue,
+  set: (v) => emit("update:modelValue", v),
+});
+
+const step = ref("email"); // 'email' | 'method' | 'password'
+const email = ref("");
+const password = ref("");
+const error = ref("");
+const loading = ref(false);
 const pkLoading = ref(false);
-async function passkeyLogin() {
-  if (pkLoading.value) return;
-  pkLoading.value = true;
-  try {
-    const { data: opts } = await pkLoginStart();
-    // Browser expects ArrayBuffer for challenge
-    const publicKey = {
-      challenge: b64UrlToBuf(opts.challenge),
-      rpId: opts.rpId,
-      userVerification: opts.userVerification || "preferred",
-      timeout: opts.timeout || 60000,
-      allowCredentials: (opts.allowCredentials || []).map((c) => ({
-        type: "public-key",
-        id: b64UrlToBuf(c.id),
-      })),
-    };
-    const assertion = await navigator.credentials.get({ publicKey });
-    if (!assertion) throw new Error("Passkey canceled");
-    const credentialId = bufToB64Url(assertion.rawId);
-    const { data: user } = await pkLoginFinish({
-      credentialId,
-      challenge: opts.challenge,
-    });
-    auth.setAuth({ user });
-    open("Passkey 로그인 성공!", "success");
-    model.value = false;
-    emit("success");
-    // If we logged in from a dead/404 URL, bounce to home so the user
-    // actually sees something useful instead of "I'm a not found".
-    try {
-      const rname = router.currentRoute.value?.name;
-      if (!rname || rname === "notFound") router.push("/");
-    } catch (_) {}
-  } catch (e) {
-    console.error(e);
-    open(e?.message?.includes("canceled") ? "취소되었습니다." : "Passkey 로그인 실패", "error");
-  } finally {
-    pkLoading.value = false;
-  }
-}
 
-import { nextTick } from "vue";
-
-// --- Cloudflare Turnstile (explicit render API) ---
-// The auto-render mode (class="cf-turnstile") scans the DOM once at script
-// load. Our widget lives inside <v-dialog>, which mounts later — so we have
-// to drive render() ourselves whenever the dialog opens.
+// --- Cloudflare Turnstile (explicit render) ---
 const TURNSTILE_SITEKEY = "0x4AAAAAADYJm08LeNJZIsCY";
 const turnstileBox = ref(null);
 const turnstileToken = ref("");
 let turnstileWidgetId = null;
-
 if (typeof window !== "undefined" && !document.getElementById("cf-turnstile-script")) {
-  const __s = document.createElement("script");
-  __s.id = "cf-turnstile-script";
-  __s.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
-  __s.async = true; __s.defer = true;
-  document.head.appendChild(__s);
+  const s = document.createElement("script");
+  s.id = "cf-turnstile-script";
+  s.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+  s.async = true; s.defer = true;
+  document.head.appendChild(s);
 }
-
 function mountTurnstile() {
   if (!turnstileBox.value) return;
   if (!window.turnstile) { setTimeout(mountTurnstile, 200); return; }
-  if (turnstileWidgetId != null) {
-    try { window.turnstile.reset(turnstileWidgetId); } catch (_) {}
-    return;
-  }
+  if (turnstileWidgetId != null) { try { window.turnstile.reset(turnstileWidgetId); } catch (_) {} return; }
   turnstileWidgetId = window.turnstile.render(turnstileBox.value, {
     sitekey: TURNSTILE_SITEKEY,
     callback: (t) => { turnstileToken.value = t || ""; },
@@ -188,92 +175,94 @@ function unmountTurnstile() {
   turnstileWidgetId = null;
 }
 
-const props = defineProps({ modelValue: Boolean });
-const emit = defineEmits(["update:modelValue", "success", "go-signup"]);
-
-const model = computed({
-  get: () => props.modelValue,
-  set: (v) => emit("update:modelValue", v),
-});
-
-// Reset form when dialog opens
-watch(() => props.modelValue, (open) => {
-  if (open) {
-    email.value = "";
-    password.value = "";
-    error.value = "";
+watch(() => model.value, async (openNow) => {
+  if (openNow) {
+    step.value = "email";
+    email.value = ""; password.value = ""; error.value = "";
+    await nextTick();
+    mountTurnstile();
+  } else {
+    unmountTurnstile();
   }
-});
+}, { immediate: true });
 
-const auth = useAuthStore();
+function closeDialog() {
+  model.value = false;
+}
 
-const email = ref("");
-const password = ref("");
-const loading = ref(false);
-const error = ref("");
+async function goNext() {
+  if (!email.value || !turnstileToken.value) return;
+  step.value = "method";
+}
+
+async function passkeyLogin() {
+  if (pkLoading.value) return;
+  pkLoading.value = true;
+  error.value = "";
+  try {
+    const { data: opts } = await pkLoginStart();
+    const publicKey = {
+      challenge: b64UrlToBuf(opts.challenge),
+      rpId: opts.rpId,
+      userVerification: opts.userVerification || "preferred",
+      timeout: opts.timeout || 60000,
+      allowCredentials: (opts.allowCredentials || []).map((c) => ({
+        type: "public-key",
+        id: b64UrlToBuf(c.id),
+      })),
+    };
+    const assertion = await navigator.credentials.get({ publicKey });
+    if (!assertion) throw new Error("Passkey canceled");
+    const credentialId = bufToB64Url(assertion.rawId);
+    const { data: user } = await pkLoginFinish({ credentialId, challenge: opts.challenge });
+    auth.setAuth({ user });
+    open("Passkey 로그인 성공!", "success");
+    model.value = false;
+    emit("success");
+    try {
+      const rname = router.currentRoute.value?.name;
+      if (!rname || rname === "notFound") router.push("/");
+    } catch (_) {}
+  } catch (e) {
+    console.error(e);
+    error.value = e?.message?.includes("canceled") ? "취소되었습니다." : "Passkey 로그인 실패";
+  } finally {
+    pkLoading.value = false;
+  }
+}
 
 async function login() {
-  error.value = "";
-
-  if (!email.value || !password.value) {
-    error.value = "Please enter email and password.";
-    return;
-  }
-
-  if (password.value.length < 6) {
-    error.value = "Password must be at least 6 characters.";
-    return;
-  }
-
+  if (loading.value) return;
   loading.value = true;
+  error.value = "";
   try {
-    const { data } = await loginApi(email.value, password.value, turnstileToken.value);
-
-    // Cookie auth: login sets the access_token cookie server-side and returns
-    // the user record directly (no token in body).
-    auth.setAuth({ user: data });
-
-    emit("success", data);
+    const { data: user } = await loginApi(email.value, password.value, turnstileToken.value);
+    auth.setAuth({ user });
+    open("로그인 되었습니다.", "success");
     model.value = false;
+    emit("success");
   } catch (e) {
-    error.value =
-      e?.response?.data?.message || "Login failed. Check your credentials.";
+    console.error(e);
+    error.value = e?.response?.data?.message || "로그인 실패";
   } finally {
     loading.value = false;
   }
 }
 
-function social(provider) {
-  window.location.href = `${import.meta.env.VITE_API_BASE_URL}/oauth2/authorization/${provider}`;
-}
-
 function goSignup() {
-  emit("go-signup");
   model.value = false;
+  emit("go-signup");
 }
 
-
-// Mount the widget when the dialog opens, tear it down when it closes.
-import { watch as __cfWatch } from "vue";
-__cfWatch(
-  () => model.value,
-  async (open) => {
-    if (open) {
-      await nextTick();
-      mountTurnstile();
-    } else {
-      unmountTurnstile();
-    }
-  },
-  { immediate: true },
-);
+function social(provider) {
+  const base = import.meta.env.VITE_API_BASE_URL || "";
+  window.location.href = `${base}/oauth2/authorization/${provider}`;
+}
 </script>
 
 <style scoped>
-
 .ts-label {
-  margin-top: 6px;
-  margin-bottom: 6px;
+  margin: 6px 0;
   color: #4b5563;
   font-size: 14px;
 }
@@ -284,4 +273,5 @@ __cfWatch(
   padding: 8px;
   margin-bottom: 16px;
 }
+.cursor-pointer { cursor: pointer; }
 </style>
