@@ -42,6 +42,8 @@
                   label="이름"
                   variant="outlined"
                   :rules="nameRules"
+                  :error-messages="nameError"
+                  :error="!!nameError"
                   required
                   counter="50"
                   maxlength="50"
@@ -57,6 +59,8 @@
                   type="email"
                   variant="outlined"
                   :rules="emailRules"
+                  :error-messages="emailError"
+                  :error="!!emailError"
                   required
                   validate-on="input lazy"
                 />
@@ -70,6 +74,8 @@
                   autocomplete="new-password"
                   variant="outlined"
                   :rules="passwordRules"
+                  :error-messages="passwordError"
+                  :error="!!passwordError"
                   required
                   validate-on="input lazy"
                   :append-inner-icon="showPassword ? 'mdi-eye-off' : 'mdi-eye'"
@@ -97,6 +103,8 @@
                   autocomplete="new-password"
                   variant="outlined"
                   :rules="password2Rules"
+                  :error-messages="password2Error"
+                  :error="!!password2Error"
                   required
                   validate-on="input lazy"
                   :append-inner-icon="showPassword2 ? 'mdi-eye-off' : 'mdi-eye'"
@@ -241,6 +249,43 @@ watch(() => form.password, () => {
     // nextTick avoids fighting Vuetify's own internal state update
     Promise.resolve().then(() => formRef.value?.validate?.());
   }
+});
+
+// --- Bulletproof error display ---
+// We compute the error message for each field explicitly and bind it to
+// :error-messages. This bypasses any quirks in Vuetify's rules-touched
+// state machine so errors are guaranteed visible as soon as the field
+// has content the rules reject.
+const nameError = computed(() => {
+  const v = form.name;
+  if (!v) return ""; // empty = pristine, don't show error
+  if (v.trim().length < 2) return "이름은 2자 이상이어야 합니다.";
+  if (v.length > 50) return "이름은 50자 이하여야 합니다.";
+  return "";
+});
+
+const emailError = computed(() => {
+  const v = form.email;
+  if (!v) return "";
+  if (!EMAIL_RE.test(v)) return "올바른 이메일 형식이 아닙니다.";
+  if (v.length > 254) return "이메일이 너무 깁니다.";
+  return "";
+});
+
+const passwordError = computed(() => {
+  const v = form.password;
+  if (!v) return "";
+  if (v.length < 8) return "비밀번호는 8자 이상이어야 합니다.";
+  if (!/[A-Za-z]/.test(v)) return "영문자를 포함해야 합니다.";
+  if (!/\d/.test(v)) return "숫자를 포함해야 합니다.";
+  return "";
+});
+
+const password2Error = computed(() => {
+  const v = form.password2;
+  if (!v) return "";
+  if (v !== form.password) return "비밀번호가 일치하지 않습니다.";
+  return "";
 });
 
 // --- Strength meter ---
