@@ -45,6 +45,7 @@
                   required
                   counter="50"
                   maxlength="50"
+                  validate-on="input lazy"
                 />
               </v-col>
               <v-col cols="12" md="6">
@@ -57,6 +58,7 @@
                   variant="outlined"
                   :rules="emailRules"
                   required
+                  validate-on="input lazy"
                 />
               </v-col>
               <v-col cols="12" md="6">
@@ -69,6 +71,7 @@
                   variant="outlined"
                   :rules="passwordRules"
                   required
+                  validate-on="input lazy"
                   :append-inner-icon="showPassword ? 'mdi-eye-off' : 'mdi-eye'"
                   @click:append-inner="showPassword = !showPassword"
                 />
@@ -95,6 +98,7 @@
                   variant="outlined"
                   :rules="password2Rules"
                   required
+                  validate-on="input lazy"
                   :append-inner-icon="showPassword2 ? 'mdi-eye-off' : 'mdi-eye'"
                   @click:append-inner="showPassword2 = !showPassword2"
                 />

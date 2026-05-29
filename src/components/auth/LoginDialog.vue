@@ -20,6 +20,7 @@
         autofocus
         class="mb-2"
         :rules="emailRules"
+        validate-on="input lazy"
         :error-messages="email && !isEmailValid ? '올바른 이메일 형식이 아닙니다.' : ''"
       />
 
