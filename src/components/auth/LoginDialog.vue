@@ -9,21 +9,20 @@
 
       <h2 class="text-h6 mb-4">로그인</h2>
 
+      <label class="field-label">이메일</label>
       <v-text-field
         v-model="email"
-        label="이메일"
+        placeholder="you@example.com"
         type="email"
         variant="outlined"
         density="comfortable"
         name="email"
         autocomplete="username"
         autofocus
-        class="mb-2"
-        :rules="emailRules"
+        class="mb-3"
         :error-messages="emailFieldError"
         :error="!!emailFieldError"
-        validate-on="input lazy"
-        required
+        hide-details="auto"
         @keyup.enter="passkeyLogin"
       />
 
@@ -82,21 +81,19 @@ const error = ref("");
 const pkLoading = ref(false);
 const checkingEmail = ref(false);
 
-// Microsoft-style: identifier required before any sign-in method can be
-// used. We probe /auth/email-exists on click so the user gets a
-// "no such account" up front instead of silently signing in to whoever
-// owns the passkey the browser offers.
+// Microsoft-style: identifier required before passkey, but Google/Kakao/
+// Signup don't need it — so the field can stay empty without surfacing a
+// red error. We deliberately do NOT use Vuetify's `rules` or `required`
+// here, because both fire on blur and would flash the "required" error
+// when the user clicks Google/Kakao/Signup. Instead:
+//   - emailFieldError surfaces ONLY when there's text and it's malformed
+//   - isEmailValid gates the Passkey button
+//   - passkeyLogin() has a hard check that shows its own error if empty
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const isEmailValid = computed(() => EMAIL_RE.test(email.value || ""));
-const emailRules = [
-  (v) => !!v || "이메일을 입력해주세요.",
-  (v) => EMAIL_RE.test(v || "") || "유효한 이메일을 입력해주세요.",
-];
-// Bulletproof explicit error display — bypasses Vuetify's touched-state
-// quirks so the error chip shows the moment the value is invalid.
 const emailFieldError = computed(() => {
   const v = email.value;
-  if (!v) return "";
+  if (!v) return ""; // empty = pristine, never error on Google/Kakao path
   if (!EMAIL_RE.test(v)) return "유효한 이메일을 입력해주세요.";
   return "";
 });
@@ -191,4 +188,11 @@ watch(() => model.value, (openNow) => {
 
 <style scoped>
 .cursor-pointer { cursor: pointer; }
+.field-label {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 6px;
+}
 </style>
