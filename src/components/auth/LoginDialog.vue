@@ -19,6 +19,8 @@
         autocomplete="username webauthn"
         autofocus
         class="mb-2"
+        :rules="emailRules"
+        :error-messages="email && !isEmailValid ? '올바른 이메일 형식이 아닙니다.' : ''"
       />
 
       <!-- Turnstile -->
@@ -81,6 +83,15 @@ const error = ref("");
 const pkLoading = ref(false);
 const turnstileBox = ref(null);
 const turnstileToken = ref("");
+
+// Email is only used as a hint for WebAuthn conditional UI (browser
+// matches it to a saved passkey) — but if the user typed garbage we
+// shouldn't silently treat it as a valid hint. Same regex as Signup.
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+const isEmailValid = computed(() => EMAIL_RE.test(email.value || ""));
+const emailRules = [
+  (v) => !v || EMAIL_RE.test(v) || "올바른 이메일 형식이 아닙니다.",
+];
 
 // --- Cloudflare Turnstile (explicit render) ---
 const TURNSTILE_SITEKEY = "0x4AAAAAADYJm08LeNJZIsCY";
