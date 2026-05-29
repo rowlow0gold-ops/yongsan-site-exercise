@@ -186,8 +186,16 @@
           </v-col>
 
           <v-col cols="12" class="d-flex justify-end ga-2 mt-4">
+            <!-- Cloudflare Turnstile widget -->
+            <div
+              class="cf-turnstile mr-auto"
+              data-sitekey="0x4AAAAAADYJm08LeNJZIsCY"
+              data-callback="onWriteTurnstileSuccess"
+              data-error-callback="onWriteTurnstileError"
+              data-expired-callback="onWriteTurnstileExpired"
+            />
             <v-btn variant="outlined" @click="goList">목록</v-btn>
-            <v-btn color="primary" type="submit">등록</v-btn>
+            <v-btn color="primary" type="submit" :disabled="!turnstileToken">등록</v-btn>
           </v-col>
         </v-row>
       </v-form>
