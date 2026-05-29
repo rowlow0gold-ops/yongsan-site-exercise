@@ -37,9 +37,10 @@
           <v-form ref="formRef" v-model="formValid" @submit.prevent="finishSignup">
             <v-row>
               <v-col cols="12" md="6">
+                <label class="field-label">이름</label>
                 <v-text-field
                   v-model="form.name"
-                  label="이름"
+                  placeholder="홍길동"
                   variant="outlined"
                   :rules="nameRules"
                   :error-messages="nameError"
@@ -48,14 +49,16 @@
                   counter="50"
                   maxlength="50"
                   validate-on="input lazy"
+                  hide-details="auto"
                 />
               </v-col>
               <v-col cols="12" md="6">
+                <label class="field-label">이메일</label>
                 <v-text-field
                   v-model="form.email"
                   name="email"
                   autocomplete="username"
-                  label="이메일"
+                  placeholder="you@example.com"
                   type="email"
                   variant="outlined"
                   :rules="emailRules"
@@ -63,12 +66,14 @@
                   :error="!!emailError"
                   required
                   validate-on="input lazy"
+                  hide-details="auto"
                 />
               </v-col>
               <v-col cols="12" md="6">
+                <label class="field-label">비밀번호</label>
                 <v-text-field
                   v-model="form.password"
-                  label="비밀번호"
+                  placeholder="영문/숫자 포함 12자 이상"
                   :type="showPassword ? 'text' : 'password'"
                   name="new-password"
                   autocomplete="new-password"
@@ -78,6 +83,7 @@
                   :error="!!passwordError"
                   required
                   validate-on="input lazy"
+                  hide-details="auto"
                   :append-inner-icon="showPassword ? 'mdi-eye-off' : 'mdi-eye'"
                   @click:append-inner="showPassword = !showPassword"
                 />
@@ -95,9 +101,10 @@
                 </div>
               </v-col>
               <v-col cols="12" md="6">
+                <label class="field-label">비밀번호 확인</label>
                 <v-text-field
                   v-model="form.password2"
-                  label="비밀번호 확인"
+                  placeholder="다시 한 번 입력해주세요"
                   :type="showPassword2 ? 'text' : 'password'"
                   name="new-password-confirm"
                   autocomplete="new-password"
@@ -107,6 +114,7 @@
                   :error="!!password2Error"
                   required
                   validate-on="input lazy"
+                  hide-details="auto"
                   :append-inner-icon="showPassword2 ? 'mdi-eye-off' : 'mdi-eye'"
                   @click:append-inner="showPassword2 = !showPassword2"
                 />
@@ -225,7 +233,8 @@ const emailRules = [
 
 const passwordRules = [
   (v) => !!v || "비밀번호를 입력해주세요.",
-  (v) => (v || "").length >= 8 || "비밀번호는 8자 이상이어야 합니다.",
+  (v) => (v || "").length >= 12 || "비밀번호는 12자 이상이어야 합니다.",
+  (v) => (v || "").length <= 128 || "비밀번호는 128자 이하여야 합니다.",
   (v) => /[A-Za-z]/.test(v || "") || "영문자를 포함해야 합니다.",
   (v) => /\d/.test(v || "") || "숫자를 포함해야 합니다.",
 ];
@@ -270,9 +279,11 @@ const emailError = computed(() => {
 const passwordError = computed(() => {
   const v = form.password;
   if (!v) return "";
-  if (v.length < 8) return "비밀번호는 8자 이상이어야 합니다.";
+  if (v.length < 12) return "비밀번호는 12자 이상이어야 합니다.";
+  if (v.length > 128) return "비밀번호는 128자 이하여야 합니다.";
   if (!/[A-Za-z]/.test(v)) return "영문자를 포함해야 합니다.";
   if (!/\d/.test(v)) return "숫자를 포함해야 합니다.";
+  if (/(.)\1{5,}/.test(v)) return "같은 문자가 너무 반복됩니다.";
   return "";
 });
 
@@ -284,13 +295,15 @@ const password2Error = computed(() => {
 });
 
 // --- Strength meter ---
+// Min server-accepted password is 12 chars; the meter rewards anything
+// beyond that floor (length, casing, symbol diversity).
 const passwordStrength = computed(() => {
   const v = form.password || "";
   let score = 0;
-  if (v.length >= 8) score++;
+  if (v.length >= 12) score++;
+  if (v.length >= 16) score++;
   if (/[A-Z]/.test(v) && /[a-z]/.test(v)) score++;
-  if (/\d/.test(v)) score++;
-  if (/[^A-Za-z0-9]/.test(v) || v.length >= 12) score++;
+  if (/\d/.test(v) && /[^A-Za-z0-9]/.test(v)) score++;
   const labels = ["매우 약함", "약함", "보통", "좋음", "강함"];
   const colors = ["error", "error", "warning", "info", "success"];
   return { score, label: labels[score], color: colors[score] };
@@ -375,8 +388,9 @@ const canFinish = computed(() => {
   if (!form.name || !form.email || !form.password || !form.password2) return false;
   if (form.password !== form.password2) return false;
   if (!EMAIL_RE.test(form.email)) return false;
-  if (form.password.length < 8) return false;
+  if (form.password.length < 12 || form.password.length > 128) return false;
   if (!/[A-Za-z]/.test(form.password) || !/\d/.test(form.password)) return false;
+  if (/(.)\1{5,}/.test(form.password)) return false;
   if (!turnstileToken.value) return false;
   return formValid.value !== false; // null on initial mount counts as ok
 });
@@ -420,3 +434,16 @@ async function finishSignup() {
   }
 }
 </script>
+
+<style scoped>
+/* Stacked label so it stays above the field even when empty — avoids
+   Vuetify's floating-label-collapses-into-the-box look that pairs
+   poorly with the inline error chip. */
+.field-label {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 6px;
+}
+</style>
