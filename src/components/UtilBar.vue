@@ -117,9 +117,13 @@ const expired = computed(() => {
   return exp != null && now.value >= exp;
 });
 let kickedAlready = false;
-watch(expired, (isExp) => {
+watch(expired, async (isExp) => {
   if (!isExp || kickedAlready || !auth.isAuthed) return;
   kickedAlready = true;
+  // Best-effort backend logout: revoke refresh + clear HttpOnly cookies
+  // server-side. The token is already expired so the call may 401, that's
+  // fine — we just want the backend to wipe the session record.
+  try { await logoutApi(); } catch (_) {}
   auth.clearAuth();
   open("세션이 만료되었습니다. 다시 로그인해주세요.", "warning");
 });
