@@ -111,15 +111,10 @@
                   @click:append-inner="showPassword2 = !showPassword2"
                 />
 
-                <!-- Cloudflare Turnstile — required server-side -->
-                <div
-                  ref="turnstileBox"
-                  class="cf-turnstile mt-4"
-                  data-sitekey="0x4AAAAAADYJm08LeNJZIsCY"
-                  data-callback="onTurnstileSuccess"
-                  data-error-callback="onTurnstileError"
-                  data-expired-callback="onTurnstileExpired"
-                />
+                <!-- Cloudflare Turnstile (explicit render — see script) -->
+                <div class="ts-frame mt-4">
+                  <div ref="turnstileBox" style="min-height: 65px" />
+                </div>
                 <div v-if="!turnstileToken" class="text-caption text-error mt-1">
                   사람 확인을 완료해주세요.
                 </div>
@@ -160,7 +155,7 @@
 </template>
 
 <script setup>
-import { computed, reactive, ref, watch } from "vue";
+import { computed, reactive, ref, watch, onMounted, onUnmounted, nextTick } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { signupApi, loginApi } from "@/api/auth";
 import { useAuthStore } from "@/stores/auth";
@@ -301,24 +296,76 @@ const passwordStrength = computed(() => {
   return { score, label: labels[score], color: colors[score] };
 });
 
-// Cloudflare Turnstile token — populated by widget callback
+// ---------------- Cloudflare Turnstile (explicit render) ----------------
+// Auto-render mode was unreliable: the api.js script scans the DOM exactly
+// once on load, so a v-stepper that mounts the widget div *after* the script
+// loaded (or remounts it on step navigation) would silently fail — user
+// would see no CAPTCHA box, only the "사람 확인을 완료해주세요" error.
+// Explicit render gives us a stable `render()` / `reset()` / `remove()` lifecycle
+// tied to step 2 entry.
+const TURNSTILE_SITEKEY = "0x4AAAAAADYJm08LeNJZIsCY";
+const turnstileBox = ref(null);
 const turnstileToken = ref("");
-function onTurnstileSuccess(t) { turnstileToken.value = t || ""; }
-function onTurnstileError()    { turnstileToken.value = ""; }
-function onTurnstileExpired()  { turnstileToken.value = ""; }
-// Expose for the script-loaded widget callbacks (data-callback names)
-if (typeof window !== "undefined") {
-  window.onTurnstileSuccess = onTurnstileSuccess;
-  window.onTurnstileError   = onTurnstileError;
-  window.onTurnstileExpired = onTurnstileExpired;
-  if (!document.getElementById("cf-turnstile-script")) {
-    const s = document.createElement("script");
-    s.id = "cf-turnstile-script";
-    s.src = "https://challenges.cloudflare.com/turnstile/v0/api.js";
-    s.async = true; s.defer = true;
-    document.head.appendChild(s);
-  }
+let turnstileWidgetId = null;
+
+function ensureTurnstileScript() {
+  if (typeof window === "undefined") return;
+  if (document.getElementById("cf-turnstile-script")) return;
+  const s = document.createElement("script");
+  s.id = "cf-turnstile-script";
+  s.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+  s.async = true; s.defer = true;
+  document.head.appendChild(s);
 }
+
+function mountTurnstile() {
+  if (!turnstileBox.value) return;
+  if (!window.turnstile) { setTimeout(mountTurnstile, 200); return; }
+  if (turnstileWidgetId != null) {
+    try { window.turnstile.reset(turnstileWidgetId); } catch (_) {}
+    return;
+  }
+  turnstileWidgetId = window.turnstile.render(turnstileBox.value, {
+    sitekey: TURNSTILE_SITEKEY,
+    callback: (t) => { turnstileToken.value = t || ""; },
+    "error-callback":   () => { turnstileToken.value = ""; },
+    "expired-callback": () => { turnstileToken.value = ""; },
+  });
+}
+
+function unmountTurnstile() {
+  turnstileToken.value = "";
+  if (window.turnstile && turnstileWidgetId != null) {
+    try { window.turnstile.remove(turnstileWidgetId); } catch (_) {}
+  }
+  turnstileWidgetId = null;
+}
+
+// Mount the widget when (and only when) step 2 is the active panel — the
+// v-stepper-window v-shows the panels rather than remounting them, but on a
+// fresh page load with ?step=1 the div may not be in the DOM yet, so we
+// re-mount whenever step transitions to 2.
+watch(step, async (s) => {
+  if (s === 2) {
+    ensureTurnstileScript();
+    await nextTick();
+    mountTurnstile();
+  }
+}, { immediate: false });
+
+onMounted(async () => {
+  if (step.value === 2) {
+    ensureTurnstileScript();
+    await nextTick();
+    mountTurnstile();
+  } else {
+    // Pre-load the script even on step 1 so it's warm by the time the user
+    // checks the boxes and clicks 다음.
+    ensureTurnstileScript();
+  }
+});
+
+onUnmounted(unmountTurnstile);
 
 // canFinish gates the submit button on EVERYTHING: filled, valid format,
 // matching, strong enough, and Turnstile passed. The submit button is also
