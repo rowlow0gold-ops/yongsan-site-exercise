@@ -14,7 +14,7 @@
       <v-spacer />
 
       <!-- ✅ JWT time left + manual refresh -->
-      <div v-if="auth.isAuthed" class="jwt-left">
+      <div v-if="auth.isAuthed && !expired" class="jwt-left">
         ⏳ {{ jwtLeftText }}
         <v-btn
           variant="text"
@@ -33,10 +33,10 @@
         <v-btn
           variant="text"
           class="util-btn"
-          :prepend-icon="auth.isAuthed ? 'mdi-logout' : 'mdi-account'"
+          :prepend-icon="(auth.isAuthed && !expired) ? 'mdi-logout' : 'mdi-account'"
           @click="handleAuthClick"
         >
-          {{ auth.isAuthed ? "로그아웃" : "로그인" }}
+          {{ (auth.isAuthed && !expired) ? "로그아웃" : "로그인" }}
         </v-btn>
 
         <v-btn
@@ -45,7 +45,7 @@
           prepend-icon="mdi-account-plus"
           :to="signupOrMypageRoute"
         >
-          {{ auth.isAuthed ? "마이페이지" : "회원가입" }}
+          {{ (auth.isAuthed && !expired) ? "마이페이지" : "회원가입" }}
         </v-btn>
 
       </div>
@@ -121,19 +121,29 @@ function readAccessExpMs() {
   return m ? Number(m[1]) : null;
 }
 
+// Sticky expiry: the access_expires_at cookie may be Max-Age-limited and
+// removed by the browser when the JWT expires. We grab its value once and
+// remember it so the countdown / expired check keep working after.
+const lastExp = ref(0);
+function currentExp() {
+  const v = readAccessExpMs();
+  if (v) lastExp.value = v;
+  return v || lastExp.value || 0;
+}
+
 const jwtLeftText = computed(() => {
-  const exp = readAccessExpMs();
+  const exp = currentExp();
   if (!exp) return "";
   return formatMs(exp - now.value);
 });
 
-// Timer-driven hard logout: when the access token expires (the cookie
-// timestamp passes the current time), clear auth state immediately so the
-// countdown + refresh icons hide and the right-side button flips back to
-// "로그인". We don't wait for the next API request to fire a 401.
+// Timer-driven hard logout: when the cookie timestamp passes the current
+// time, hide the countdown + refresh icons and flip the right button back
+// to "로그인". Bound directly into v-if/computed so the UI updates even if
+// auth.clearAuth() has any hiccup.
 const expired = computed(() => {
-  const exp = readAccessExpMs();
-  return exp != null && now.value >= exp;
+  const exp = currentExp();
+  return exp > 0 && now.value >= exp;
 });
 let kickedAlready = false;
 watch(expired, async (isExp) => {
