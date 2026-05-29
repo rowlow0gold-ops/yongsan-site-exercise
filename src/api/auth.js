@@ -29,3 +29,10 @@ export function signupApi(name, email, password, cfTurnstileToken) {
 export function exchangeApi(code) {
   return api.post("/auth/exchange", { code });
 }
+
+// "Does this email belong to a registered account?" — used by LoginDialog
+// before kicking off WebAuthn, so the user gets 'no such account' instead
+// of a silent identity swap. Returns { exists: bool }.
+export function emailExistsApi(email) {
+  return api.post("/auth/email-exists", { email });
+}

@@ -20,23 +20,20 @@
         autofocus
         class="mb-2"
         :rules="emailRules"
+        :error-messages="emailFieldError"
+        :error="!!emailFieldError"
         validate-on="input lazy"
         required
+        @keyup.enter="passkeyLogin"
       />
-
-      <!-- Turnstile -->
-      <div class="ts-label">Let us know you are human</div>
-      <div class="ts-frame">
-        <div ref="turnstileBox" style="min-height: 65px" />
-      </div>
 
       <v-alert v-if="error" type="error" variant="tonal" class="mb-3">{{ error }}</v-alert>
 
       <v-btn
         block color="primary" size="large" class="mb-3"
         prepend-icon="mdi-key-variant"
-        :loading="pkLoading"
-        :disabled="!turnstileToken || !isEmailValid"
+        :loading="pkLoading || checkingEmail"
+        :disabled="!isEmailValid || pkLoading || checkingEmail"
         @click="passkeyLogin"
       >
         Passkey로 로그인
@@ -61,10 +58,11 @@
 </template>
 
 <script setup>
-import { computed, ref, watch, nextTick, onMounted, onUnmounted } from "vue";
+import { computed, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import { useAuthStore } from "@/stores/auth";
 import { loginStart as pkLoginStart, loginFinish as pkLoginFinish } from "@/api/webauthn";
+import { emailExistsApi } from "@/api/auth";
 import { bufToB64Url, b64UrlToBuf } from "@/lib/webauthn";
 import { useAlert } from "@/composables/useAlert";
 
@@ -82,61 +80,33 @@ const model = computed({
 const email = ref("");
 const error = ref("");
 const pkLoading = ref(false);
-const turnstileBox = ref(null);
-const turnstileToken = ref("");
+const checkingEmail = ref(false);
 
 // Microsoft-style: identifier required before any sign-in method can be
-// used. The email is sent to the server as part of WebAuthn loginStart
-// so we can narrow allowCredentials to that user's passkeys (also lets
-// us reject 'unknown account' early instead of generic credential
-// rejection later).
+// used. We probe /auth/email-exists on click so the user gets a
+// "no such account" up front instead of silently signing in to whoever
+// owns the passkey the browser offers.
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const isEmailValid = computed(() => EMAIL_RE.test(email.value || ""));
 const emailRules = [
   (v) => !!v || "이메일을 입력해주세요.",
   (v) => EMAIL_RE.test(v || "") || "유효한 이메일을 입력해주세요.",
 ];
+// Bulletproof explicit error display — bypasses Vuetify's touched-state
+// quirks so the error chip shows the moment the value is invalid.
+const emailFieldError = computed(() => {
+  const v = email.value;
+  if (!v) return "";
+  if (!EMAIL_RE.test(v)) return "유효한 이메일을 입력해주세요.";
+  return "";
+});
 
-// --- Cloudflare Turnstile (explicit render) ---
-const TURNSTILE_SITEKEY = "0x4AAAAAADYJm08LeNJZIsCY";
-let turnstileWidgetId = null;
-function ensureTurnstileScript() {
-  if (typeof window === "undefined") return;
-  if (document.getElementById("cf-turnstile-script")) return;
-  const s = document.createElement("script");
-  s.id = "cf-turnstile-script";
-  s.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
-  s.async = true; s.defer = true;
-  document.head.appendChild(s);
-}
-function mountTurnstile() {
-  if (!turnstileBox.value) return;
-  if (!window.turnstile) { setTimeout(mountTurnstile, 200); return; }
-  if (turnstileWidgetId != null) {
-    try { window.turnstile.reset(turnstileWidgetId); } catch (_) {}
-    return;
-  }
-  turnstileWidgetId = window.turnstile.render(turnstileBox.value, {
-    sitekey: TURNSTILE_SITEKEY,
-    callback: (t) => { turnstileToken.value = t || ""; },
-    "error-callback":   () => { turnstileToken.value = ""; },
-    "expired-callback": () => { turnstileToken.value = ""; },
-  });
-}
-function unmountTurnstile() {
-  turnstileToken.value = "";
-  if (window.turnstile && turnstileWidgetId != null) {
-    try { window.turnstile.remove(turnstileWidgetId); } catch (_) {}
-  }
-  turnstileWidgetId = null;
-}
-
-// NOTE: WebAuthn Conditional UI was removed deliberately.
-// It auto-fires navigator.credentials.get({mediation: "conditional"}) which
-// causes the OS to show the saved-passkey sheet without the user ever
-// typing an email. That bypasses the email-required gate on the Passkey
-// button. Microsoft-style enforcement: passkey auth only fires from the
-// explicit gated button below, never on dialog open.
+// NOTE: Turnstile was removed from this dialog. It existed as a brute-force
+// shield for password login; with password gone and only passkey + OAuth
+// remaining (both bot-resistant by design), it was just user friction.
+//
+// WebAuthn Conditional UI was also removed — see git history. It auto-fires
+// the OS passkey sheet on dialog open, bypassing the email-required gate.
 
 async function completePasskey(assertion, challenge) {
   const credentialId = bufToB64Url(assertion.rawId);
@@ -152,16 +122,37 @@ async function completePasskey(assertion, challenge) {
 }
 
 async function passkeyLogin() {
-  if (pkLoading.value) return;
-  // Hard re-check the email gate — defense in depth against a button that
-  // somehow becomes clickable while the email is empty/invalid (devtools,
-  // accessibility tools, etc).
+  if (pkLoading.value || checkingEmail.value) return;
   if (!isEmailValid.value) {
     error.value = "유효한 이메일을 입력해주세요.";
     return;
   }
-  pkLoading.value = true;
   error.value = "";
+
+  // Step 1: probe the server to see if this email is a registered account.
+  // Until this returns true, we don't even consider calling WebAuthn —
+  // that prevents the silent identity-swap where any passkey on the device
+  // could log the user in regardless of the email they typed.
+  checkingEmail.value = true;
+  try {
+    const { data } = await emailExistsApi(email.value.trim());
+    if (!data?.exists) {
+      error.value = "계정을 찾을 수 없습니다. 이메일을 확인하거나 회원가입을 진행해주세요.";
+      return;
+    }
+  } catch (e) {
+    console.error(e);
+    error.value = e?.response?.status === 429
+      ? "요청이 너무 많습니다. 잠시 후 다시 시도해주세요."
+      : "로그인 확인 실패. 잠시 후 다시 시도해주세요.";
+    return;
+  } finally {
+    checkingEmail.value = false;
+  }
+
+  // Step 2: kick off WebAuthn. (Backend still uses the discoverable-credential
+  // flow — narrowing allowCredentials by email is task #51's follow-up.)
+  pkLoading.value = true;
   try {
     const { data: opts } = await pkLoginStart();
     const publicKey = {
@@ -192,46 +183,12 @@ function social(provider) {
   window.location.href = `${base}/oauth2/authorization/${provider}`;
 }
 
-// React to open/close. NOT immediate — avoids TDZ on the functions below.
-watch(() => model.value, async (openNow) => {
-  if (openNow) {
-    email.value = ""; error.value = "";
-    ensureTurnstileScript();
-    await nextTick();
-    mountTurnstile();
-    // Conditional UI deliberately not started — see note above.
-  } else {
-    unmountTurnstile();
-  }
-});
-
-// If the dialog is already open at mount time (e.g. URL ?login=1 path),
-// kick the same flow once. By now all functions are defined.
-onMounted(async () => {
-  if (model.value) {
-    ensureTurnstileScript();
-    await nextTick();
-    mountTurnstile();
-  }
-});
-
-onUnmounted(() => {
-  unmountTurnstile();
+// Reset on open/close
+watch(() => model.value, (openNow) => {
+  if (openNow) { email.value = ""; error.value = ""; }
 });
 </script>
 
 <style scoped>
-.ts-label {
-  margin: 6px 0;
-  color: #4b5563;
-  font-size: 14px;
-}
-.ts-frame {
-  background: #f7f8fa;
-  border: 1px solid #e5e7eb;
-  border-radius: 6px;
-  padding: 8px;
-  margin-bottom: 12px;
-}
 .cursor-pointer { cursor: pointer; }
 </style>
