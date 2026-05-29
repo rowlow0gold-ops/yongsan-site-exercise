@@ -27,7 +27,10 @@
       />
 
       <!-- Cloudflare Turnstile — explicit render so it survives dialog mount/unmount -->
-      <div ref="turnstileBox" class="mb-2" style="min-height: 65px" />
+      <div class="ts-label">Let us know you are human</div>
+      <div class="ts-frame">
+        <div ref="turnstileBox" style="min-height: 65px" />
+      </div>
 
       <v-alert v-if="error" type="error" variant="tonal" class="mb-3">
         {{ error }}
@@ -202,3 +205,20 @@ __cfWatch(
   { immediate: true },
 );
 </script>
+
+<style scoped>
+
+.ts-label {
+  margin-top: 6px;
+  margin-bottom: 6px;
+  color: #4b5563;
+  font-size: 14px;
+}
+.ts-frame {
+  background: #f7f8fa;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 8px;
+  margin-bottom: 16px;
+}
+</style>
