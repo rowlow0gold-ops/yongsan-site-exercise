@@ -40,60 +40,27 @@ api.interceptors.response.use(
   (res) => res,
   async (err) => {
     const status = err?.response?.status;
-    const original = err.config;
+    const original = err.config || {};
     const isAuthEndpoint =
       original.url?.includes("/auth/login") ||
       original.url?.includes("/auth/signup") ||
       original.url?.includes("/auth/refresh") ||
       original.url?.includes("/auth/exchange");
 
-    // Only auto-refresh for GET requests — never silently re-auth on writes
-    const isSafeMethod = (original.method || "get").toLowerCase() === "get";
-
-    if (
-      status === 401 &&
-      original &&
-      !original._retry &&
-      !isAuthEndpoint &&
-      isSafeMethod
-    ) {
-      original._retry = true;
-
-      if (isRefreshing) {
-        return new Promise((resolve, reject) => {
-          queue.push({ resolve, reject });
-        }).then(() => api(original));
-      }
-
-      isRefreshing = true;
-
+    // Hard expiry policy: when the access token has expired (401), do NOT
+    // silently refresh. Clear auth state and redirect to login so the user
+    // experiences a real 1-minute timeout. The manual ↻ button in the top
+    // bar still works to extend the session before it expires.
+    if (status === 401 && !isAuthEndpoint) {
       try {
         const auth = useAuthStore(pinia);
-        if (auth.refreshDisabled) {
-          // user explicitly logged out -> don't refresh
-          window.location.href = "/?login=1";
-          return Promise.reject(err);
-        }
-
-        // /auth/refresh now sets a fresh access_token cookie server-side;
-        // no token returned in the body.
-        await refreshClient.post("/auth/refresh");
-        processQueue(null);
-        return api(original);
-      } catch (refreshErr) {
-        const auth = useAuthStore(pinia);
-        auth.clearAuth();
-        processQueue(refreshErr);
-
+        auth.clearAuth?.();
+      } catch (_) {}
+      if (typeof window !== "undefined" && window.location.pathname !== "/") {
         window.location.href = "/?login=1";
-        return Promise.reject(refreshErr);
-      } finally {
-        isRefreshing = false;
       }
     }
-
     return Promise.reject(err);
-  },
+  }
 );
-
 export default api;
