@@ -27,7 +27,8 @@
           density="compact"
           hide-details
         />
-        <v-btn color="primary" height="40" :loading="submitting" @click="submitFeedback">
+        <div ref="turnstileBox" class="ts-box" />
+        <v-btn color="primary" height="40" :loading="submitting" :disabled="!turnstileToken" @click="submitFeedback">
           의견등록
         </v-btn>
       </div>
@@ -45,6 +46,38 @@ import { ref } from "vue";
 import { useRoute } from "vue-router";
 import { useAlert } from "@/composables/useAlert";
 import api from "@/lib/api";
+import { ref as __cfRef, watch as __cfWatch, onMounted as __cfMounted, onUnmounted as __cfUnmounted } from "vue";
+
+// --- Cloudflare Turnstile (explicit render) ---
+const TURNSTILE_SITEKEY = "0x4AAAAAADYJm08LeNJZIsCY";
+const turnstileBox = __cfRef(null);
+const turnstileToken = __cfRef("");
+let turnstileWidgetId = null;
+if (typeof window !== "undefined" && !document.getElementById("cf-turnstile-script")) {
+  const __s = document.createElement("script");
+  __s.id = "cf-turnstile-script";
+  __s.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+  __s.async = true; __s.defer = true;
+  document.head.appendChild(__s);
+}
+function mountSurveyTurnstile() {
+  if (!turnstileBox.value) return;
+  if (!window.turnstile) { setTimeout(mountSurveyTurnstile, 200); return; }
+  if (turnstileWidgetId != null) return;
+  turnstileWidgetId = window.turnstile.render(turnstileBox.value, {
+    sitekey: TURNSTILE_SITEKEY,
+    callback: (t) => { turnstileToken.value = t || ""; },
+    "error-callback":   () => { turnstileToken.value = ""; },
+    "expired-callback": () => { turnstileToken.value = ""; },
+  });
+}
+__cfMounted(() => mountSurveyTurnstile());
+__cfUnmounted(() => {
+  if (window.turnstile && turnstileWidgetId != null) {
+    try { window.turnstile.remove(turnstileWidgetId); } catch (_) {}
+  }
+});
+
 
 const { open } = useAlert();
 const route = useRoute();
@@ -67,6 +100,7 @@ async function submitFeedback() {
   submitting.value = true;
   try {
     await api.post("/api/satisfaction", {
+      cfTurnstileToken: turnstileToken.value,
       pagePath: route.fullPath,
       rating: selectedRate.value || "보통",
       feedback: feedback.value || null,
@@ -82,3 +116,6 @@ async function submitFeedback() {
   }
 }
 </script>
+<style scoped>
+.ts-box { display: inline-block; margin: 4px 8px 0 0; vertical-align: middle; }
+</style>

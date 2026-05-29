@@ -218,7 +218,7 @@ function goWrite() {
   padding: 8px 4px;
 }
 .skel-row {
-  height: 56px; /* matches row height with 20px vertical padding + ~16px text */
+  height: 80px; /* matches real comfy v-data-table rows (20px padding + title-cell + author star line) */
   border-bottom: 1px solid #f1f5f9;
   background: linear-gradient(90deg, #f3f4f6 0%, #e5e7eb 50%, #f3f4f6 100%);
   background-size: 200% 100%;
@@ -227,7 +227,7 @@ function goWrite() {
   margin: 6px 0;
 }
 .skel-head {
-  height: 48px;
+  height: 56px;
   background: linear-gradient(90deg, #e5e7eb 0%, #d1d5db 50%, #e5e7eb 100%);
   background-size: 200% 100%;
   animation: skel-shimmer 1.2s linear infinite;
