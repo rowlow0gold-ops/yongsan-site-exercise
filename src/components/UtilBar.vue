@@ -84,33 +84,23 @@ onMounted(() => {
 });
 onUnmounted(() => clearInterval(timerId));
 
-// Sliding session: any real user activity within the access-token window
-// silently extends the session by calling /auth/refresh. Throttled so we
-// don't hammer the backend on every mousemove.
-const ACTIVITY_THROTTLE_MS = 20 * 1000;
+// Sliding session: navigating to a new page silently extends the session
+// by calling /auth/refresh. Idle browsing (mousemove / scroll) is NOT
+// counted as activity — only meaningful route changes.
 let lastSlide = 0;
-async function onUserActivity() {
+const SLIDE_THROTTLE_MS = 10 * 1000;
+router.afterEach(async (to, from) => {
   if (!auth.isAuthed || refreshing.value) return;
-  // Only slide while the current token is still valid — once expired, the
-  // expired-watcher takes over and forces re-login.
+  if (to.fullPath === from.fullPath) return;          // same page, no slide
   const exp = readAccessExpMs();
-  if (!exp || Date.now() >= exp) return;
+  if (!exp || Date.now() >= exp) return;              // already expired — let watcher kick
   const ts = Date.now();
-  if (ts - lastSlide < ACTIVITY_THROTTLE_MS) return;
+  if (ts - lastSlide < SLIDE_THROTTLE_MS) return;     // rate-limit rapid hops
   lastSlide = ts;
   try {
     await refreshApi();
-    now.value = Date.now(); // re-tick the countdown computed
-  } catch (_) { /* network blip — ignore, next activity tick will retry */ }
-}
-const ACTIVITY_EVENTS = ["click", "keydown", "mousemove", "scroll", "touchstart"];
-onMounted(() => {
-  ACTIVITY_EVENTS.forEach((e) =>
-    window.addEventListener(e, onUserActivity, { passive: true }),
-  );
-});
-onUnmounted(() => {
-  ACTIVITY_EVENTS.forEach((e) => window.removeEventListener(e, onUserActivity));
+    now.value = Date.now();                            // re-tick countdown
+  } catch (_) { /* ignore */ }
 });
 
 function formatMs(ms) {
