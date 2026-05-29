@@ -186,7 +186,7 @@
           </v-col>
 
           <v-col cols="12" class="d-flex justify-end ga-2 mt-4">
-            <v-card variant="outlined" class="mb-4 pa-4 ts-card">
+            <v-card v-if="!auth.isAuthed" variant="outlined" class="mb-4 pa-4 ts-card">
               <div class="ts-card-title">Let us know you are human</div>
               <div
                 class="cf-turnstile"

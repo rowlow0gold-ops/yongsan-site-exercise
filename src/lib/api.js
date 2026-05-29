@@ -48,17 +48,20 @@ api.interceptors.response.use(
       original.url?.includes("/auth/exchange");
 
     // Hard expiry policy: when the access token has expired (401), do NOT
-    // silently refresh. Clear auth state and redirect to login so the user
-    // experiences a real 1-minute timeout. The manual ↻ button in the top
-    // bar still works to extend the session before it expires.
+    // silently refresh AND do NOT redirect. Keep the user on the current
+    // page so any in-progress form data (board write, etc.) isn't wiped.
+    // Just clear auth state and show a toast prompting them to log in.
     if (status === 401 && !isAuthEndpoint) {
       try {
         const auth = useAuthStore(pinia);
-        auth.clearAuth?.();
+        if (auth.isAuthed) {
+          auth.clearAuth?.();
+          try {
+            const { useAlert } = await import("@/composables/useAlert");
+            useAlert().open("로그인이 필요합니다. 다시 로그인해주세요.", "warning");
+          } catch (_) {}
+        }
       } catch (_) {}
-      if (typeof window !== "undefined" && window.location.pathname !== "/") {
-        window.location.href = "/?login=1";
-      }
     }
     return Promise.reject(err);
   }
