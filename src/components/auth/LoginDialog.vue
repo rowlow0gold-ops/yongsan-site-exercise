@@ -7,10 +7,7 @@
         </v-btn>
       </div>
 
-      <h2 class="text-h6 mb-1">로그인</h2>
-      <p class="text-body-2 text-medium-emphasis mb-4">
-        Passkey, Google, 또는 Kakao로 로그인하세요. 비밀번호는 더 이상 사용하지 않습니다.
-      </p>
+      <h2 class="text-h6 mb-4">로그인</h2>
 
       <v-text-field
         v-model="email"

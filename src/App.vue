@@ -23,6 +23,10 @@
     <v-snackbar v-if="show" v-model="show" :color="color" timeout="-1">
       {{ message }}
     </v-snackbar>
+
+    <!-- Globally mounted: watches auth state and offers passkey enrollment
+         after any successful login on devices that don't have a passkey yet. -->
+    <PasskeyEnrollPrompt />
   </v-app>
 </template>
 
@@ -31,6 +35,7 @@ import TopBanner from "./components/TopBanner.vue";
 import UtilBar from "./components/UtilBar.vue";
 import Nav from "./components/Nav.vue";
 import Footer from "./components/Footer.vue";
+import PasskeyEnrollPrompt from "./components/auth/PasskeyEnrollPrompt.vue";
 import { ref, onMounted, onBeforeUnmount, watch } from "vue";
 import { useAlert } from "@/composables/useAlert";
 import { useRouter, useRoute } from "vue-router";
