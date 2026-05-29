@@ -65,6 +65,16 @@
                 type="password"
                 variant="outlined"
               />
+
+              <!-- Cloudflare Turnstile — required server-side -->
+              <div
+                ref="turnstileBox"
+                class="cf-turnstile mt-4"
+                data-sitekey="0x4AAAAAADYJm08LeNJZIsCY"
+                data-callback="onTurnstileSuccess"
+                data-error-callback="onTurnstileError"
+                data-expired-callback="onTurnstileExpired"
+              />
             </v-col>
           </v-row>
 
@@ -149,10 +159,30 @@ const form = reactive({
   password2: "",
 });
 
+// Cloudflare Turnstile token — populated by widget callback
+const turnstileToken = ref("");
+function onTurnstileSuccess(t) { turnstileToken.value = t || ""; }
+function onTurnstileError()    { turnstileToken.value = ""; }
+function onTurnstileExpired()  { turnstileToken.value = ""; }
+// Expose for the script-loaded widget callbacks (data-callback names)
+if (typeof window !== "undefined") {
+  window.onTurnstileSuccess = onTurnstileSuccess;
+  window.onTurnstileError   = onTurnstileError;
+  window.onTurnstileExpired = onTurnstileExpired;
+  if (!document.getElementById("cf-turnstile-script")) {
+    const s = document.createElement("script");
+    s.id = "cf-turnstile-script";
+    s.src = "https://challenges.cloudflare.com/turnstile/v0/api.js";
+    s.async = true; s.defer = true;
+    document.head.appendChild(s);
+  }
+}
+
 const canFinish = computed(() => {
   if (!form.name || !form.email || !form.password || !form.password2)
     return false;
-  return form.password === form.password2;
+  if (form.password !== form.password2) return false;
+  return !!turnstileToken.value;
 });
 
 async function finishSignup() {
@@ -160,7 +190,7 @@ async function finishSignup() {
     // 1) signup (server replies generically; we can't tell from the response
     //    whether the email was new or already taken — that's deliberate, see
     //    audit: email enumeration mitigation)
-    await signupApi(form.name, form.email, form.password);
+    await signupApi(form.name, form.email, form.password, turnstileToken.value);
 
     // 2) auto login (will fail if the email was taken with a different password)
     const res = await loginApi(form.email, form.password);

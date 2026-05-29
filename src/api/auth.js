@@ -20,8 +20,8 @@ export function meApi() {
   return api.get("/auth/me");
 }
 
-export function signupApi(name, email, password) {
-  return api.post("/auth/signup", { name, email, password });
+export function signupApi(name, email, password, cfTurnstileToken) {
+  return api.post("/auth/signup", { name, email, password, cfTurnstileToken });
 }
 
 // Exchange the one-time code returned by the OAuth redirect for an access token.
