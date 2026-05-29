@@ -47,6 +47,18 @@
         로그인
       </v-btn>
 
+      <v-btn
+        block
+        variant="outlined"
+        size="large"
+        class="mt-2"
+        prepend-icon="mdi-key-variant"
+        :loading="pkLoading"
+        @click="passkeyLogin"
+      >
+        Passkey로 로그인
+      </v-btn>
+
       <v-divider class="my-4">또는</v-divider>
 
       <div class="text-center mt-4">
@@ -84,6 +96,45 @@
 import { computed, ref, watch } from "vue";
 import { useAuthStore } from "@/stores/auth";
 import { loginApi } from "@/api/auth";
+import { loginStart as pkLoginStart, loginFinish as pkLoginFinish } from "@/api/webauthn";
+import { bufToB64Url, b64UrlToBuf } from "@/lib/webauthn";
+
+const pkLoading = ref(false);
+async function passkeyLogin() {
+  if (pkLoading.value) return;
+  pkLoading.value = true;
+  try {
+    const { data: opts } = await pkLoginStart();
+    // Browser expects ArrayBuffer for challenge
+    const publicKey = {
+      challenge: b64UrlToBuf(opts.challenge),
+      rpId: opts.rpId,
+      userVerification: opts.userVerification || "preferred",
+      timeout: opts.timeout || 60000,
+      allowCredentials: (opts.allowCredentials || []).map((c) => ({
+        type: "public-key",
+        id: b64UrlToBuf(c.id),
+      })),
+    };
+    const assertion = await navigator.credentials.get({ publicKey });
+    if (!assertion) throw new Error("Passkey canceled");
+    const credentialId = bufToB64Url(assertion.rawId);
+    const { data: user } = await pkLoginFinish({
+      credentialId,
+      challenge: opts.challenge,
+    });
+    auth.setAuth({ user });
+    open("Passkey 로그인 성공!", "success");
+    model.value = false;
+    emit("success");
+  } catch (e) {
+    console.error(e);
+    open(e?.message?.includes("canceled") ? "취소되었습니다." : "Passkey 로그인 실패", "error");
+  } finally {
+    pkLoading.value = false;
+  }
+}
+
 import { nextTick } from "vue";
 
 // --- Cloudflare Turnstile (explicit render API) ---
