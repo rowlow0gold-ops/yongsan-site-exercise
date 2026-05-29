@@ -84,6 +84,35 @@ onMounted(() => {
 });
 onUnmounted(() => clearInterval(timerId));
 
+// Sliding session: any real user activity within the access-token window
+// silently extends the session by calling /auth/refresh. Throttled so we
+// don't hammer the backend on every mousemove.
+const ACTIVITY_THROTTLE_MS = 20 * 1000;
+let lastSlide = 0;
+async function onUserActivity() {
+  if (!auth.isAuthed || refreshing.value) return;
+  // Only slide while the current token is still valid — once expired, the
+  // expired-watcher takes over and forces re-login.
+  const exp = readAccessExpMs();
+  if (!exp || Date.now() >= exp) return;
+  const ts = Date.now();
+  if (ts - lastSlide < ACTIVITY_THROTTLE_MS) return;
+  lastSlide = ts;
+  try {
+    await refreshApi();
+    now.value = Date.now(); // re-tick the countdown computed
+  } catch (_) { /* network blip — ignore, next activity tick will retry */ }
+}
+const ACTIVITY_EVENTS = ["click", "keydown", "mousemove", "scroll", "touchstart"];
+onMounted(() => {
+  ACTIVITY_EVENTS.forEach((e) =>
+    window.addEventListener(e, onUserActivity, { passive: true }),
+  );
+});
+onUnmounted(() => {
+  ACTIVITY_EVENTS.forEach((e) => window.removeEventListener(e, onUserActivity));
+});
+
 function formatMs(ms) {
   ms = Math.max(0, ms);
   const totalSec = Math.floor(ms / 1000);
