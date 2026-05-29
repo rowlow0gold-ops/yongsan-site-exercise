@@ -45,6 +45,9 @@ import { ref } from "vue";
 import { useRoute } from "vue-router";
 import { useAlert } from "@/composables/useAlert";
 import api from "@/lib/api";
+import { useAuthStore } from "@/stores/auth";
+const auth = useAuthStore();
+
 
 
 const { open } = useAlert();
@@ -60,6 +63,12 @@ function rate(label) {
 }
 
 async function submitFeedback() {
+  // Login required — surface the auth requirement BEFORE the field-validity
+  // check so anonymous users get the correct prompt.
+  if (!auth.isAuthed) {
+    open("로그인 후 의견을 등록할 수 있습니다.", "warning");
+    return;
+  }
   if (feedback.value === "" && selectedRate.value === null) {
     open("만족도를 선택하거나 의견을 입력해주세요.", "warning");
     return;
