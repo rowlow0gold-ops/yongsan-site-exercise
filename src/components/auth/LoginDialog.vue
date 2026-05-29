@@ -14,6 +14,8 @@
         variant="outlined"
         density="comfortable"
         class="mb-2"
+        name="email"
+        autocomplete="username webauthn"
       />
 
       <v-text-field
@@ -23,6 +25,8 @@
         variant="outlined"
         density="comfortable"
         class="mb-2"
+        name="password"
+        autocomplete="current-password"
         @keyup.enter="login"
       />
 

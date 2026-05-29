@@ -45,6 +45,8 @@
             <v-col cols="12" md="6">
               <v-text-field
                 v-model="form.email"
+                name="email"
+                autocomplete="username"
                 label="이메일"
                 type="email"
                 variant="outlined"
@@ -55,6 +57,8 @@
                 v-model="form.password"
                 label="비밀번호"
                 type="password"
+                name="new-password"
+                autocomplete="new-password"
                 variant="outlined"
               />
             </v-col>
@@ -63,6 +67,8 @@
                 v-model="form.password2"
                 label="비밀번호 확인"
                 type="password"
+                name="new-password-confirm"
+                autocomplete="new-password"
                 variant="outlined"
               />
 
