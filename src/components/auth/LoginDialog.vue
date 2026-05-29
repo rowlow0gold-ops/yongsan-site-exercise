@@ -181,8 +181,10 @@ watch(() => model.value, async (openNow) => {
     email.value = ""; password.value = ""; error.value = "";
     await nextTick();
     mountTurnstile();
+    startConditionalPasskey(); // surface passkey via the email autofill chip
   } else {
     unmountTurnstile();
+    if (conditionalAbort) { try { conditionalAbort.abort(); } catch (_) {} conditionalAbort = null; }
   }
 }, { immediate: true });
 
@@ -193,6 +195,53 @@ function closeDialog() {
 async function goNext() {
   if (!email.value || !turnstileToken.value) return;
   step.value = "method";
+}
+
+
+let conditionalAbort = null;
+async function startConditionalPasskey() {
+  if (typeof window === "undefined" || !window.PublicKeyCredential) return;
+  try {
+    if (typeof PublicKeyCredential.isConditionalMediationAvailable === "function") {
+      const supported = await PublicKeyCredential.isConditionalMediationAvailable();
+      if (!supported) return;
+    } else {
+      return;
+    }
+    const { data: opts } = await pkLoginStart();
+    conditionalAbort = new AbortController();
+    const publicKey = {
+      challenge: b64UrlToBuf(opts.challenge),
+      rpId: opts.rpId,
+      userVerification: opts.userVerification || "preferred",
+      timeout: opts.timeout || 60000,
+      allowCredentials: (opts.allowCredentials || []).map((c) => ({
+        type: "public-key",
+        id: b64UrlToBuf(c.id),
+      })),
+    };
+    // This sits in the background — resolves only when the user picks
+    // the passkey from the email field's autofill chip.
+    const assertion = await navigator.credentials.get({
+      publicKey,
+      mediation: "conditional",
+      signal: conditionalAbort.signal,
+    });
+    if (!assertion) return;
+    const credentialId = bufToB64Url(assertion.rawId);
+    const { data: user } = await pkLoginFinish({ credentialId, challenge: opts.challenge });
+    auth.setAuth({ user });
+    open("Passkey 로그인 성공!", "success");
+    model.value = false;
+    emit("success");
+    try {
+      const rname = router.currentRoute.value?.name;
+      if (!rname || rname === "notFound") router.push("/");
+    } catch (_) {}
+  } catch (e) {
+    // Most common: AbortError when the dialog closes — silently ignore.
+    if (e?.name !== "AbortError") console.warn("conditional passkey:", e);
+  }
 }
 
 async function passkeyLogin() {
