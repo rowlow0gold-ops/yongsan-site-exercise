@@ -188,13 +188,7 @@
           <v-col cols="12" class="d-flex justify-end ga-2 mt-4">
             <v-card v-if="!auth.isAuthed" variant="outlined" class="mb-4 pa-4 ts-card">
               <div class="ts-card-title">Let us know you are human</div>
-              <div
-                class="cf-turnstile"
-                data-sitekey="0x4AAAAAADYJm08LeNJZIsCY"
-                data-callback="onWriteTurnstileSuccess"
-                data-error-callback="onWriteTurnstileError"
-                data-expired-callback="onWriteTurnstileExpired"
-              />
+              <div ref="turnstileBox" style="min-height: 65px" />
             </v-card>
 
             <div class="d-flex align-center ga-2">
@@ -211,24 +205,48 @@
 <script setup>
 import { ref, computed, onMounted } from "vue";
 
-// --- Cloudflare Turnstile ---
-import { ref as __cfRef } from "vue";
+// --- Cloudflare Turnstile (explicit render) ---
+import { ref as __cfRef, watch as __cfWatch, onMounted as __cfMounted, onUnmounted as __cfUnmounted, nextTick as __cfNextTick } from "vue";
+const TURNSTILE_SITEKEY = "0x4AAAAAADYJm08LeNJZIsCY";
+const turnstileBox = __cfRef(null);
 const turnstileToken = __cfRef("");
-function onWriteTurnstileSuccess(t) { turnstileToken.value = t || ""; }
-function onWriteTurnstileError()    { turnstileToken.value = ""; }
-function onWriteTurnstileExpired()  { turnstileToken.value = ""; }
-if (typeof window !== "undefined") {
-  window.onWriteTurnstileSuccess = onWriteTurnstileSuccess;
-  window.onWriteTurnstileError   = onWriteTurnstileError;
-  window.onWriteTurnstileExpired = onWriteTurnstileExpired;
-  if (!document.getElementById("cf-turnstile-script")) {
-    const __s = document.createElement("script");
-    __s.id = "cf-turnstile-script";
-    __s.src = "https://challenges.cloudflare.com/turnstile/v0/api.js";
-    __s.async = true; __s.defer = true;
-    document.head.appendChild(__s);
-  }
+let turnstileWidgetId = null;
+if (typeof window !== "undefined" && !document.getElementById("cf-turnstile-script")) {
+  const __s = document.createElement("script");
+  __s.id = "cf-turnstile-script";
+  __s.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+  __s.async = true; __s.defer = true;
+  document.head.appendChild(__s);
 }
+function mountTurnstile() {
+  if (!turnstileBox.value) return;
+  if (!window.turnstile) { setTimeout(mountTurnstile, 200); return; }
+  if (turnstileWidgetId != null) return;
+  turnstileWidgetId = window.turnstile.render(turnstileBox.value, {
+    sitekey: TURNSTILE_SITEKEY,
+    callback: (t) => { turnstileToken.value = t || ""; },
+    "error-callback":   () => { turnstileToken.value = ""; },
+    "expired-callback": () => { turnstileToken.value = ""; },
+  });
+}
+__cfMounted(async () => {
+  await __cfNextTick();
+  if (!auth.isAuthed) mountTurnstile();
+});
+__cfWatch(() => auth.isAuthed, async (isAuthed) => {
+  if (!isAuthed) {
+    await __cfNextTick();
+    mountTurnstile();
+  } else if (window.turnstile && turnstileWidgetId != null) {
+    try { window.turnstile.remove(turnstileWidgetId); } catch (_) {}
+    turnstileWidgetId = null;
+  }
+});
+__cfUnmounted(() => {
+  if (window.turnstile && turnstileWidgetId != null) {
+    try { window.turnstile.remove(turnstileWidgetId); } catch (_) {}
+  }
+});
 import { useRouter, useRoute } from "vue-router";
 import { useAuthStore } from "@/stores/auth";
 import { useAlert } from "@/composables/useAlert";

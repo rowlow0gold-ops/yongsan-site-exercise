@@ -77,7 +77,22 @@ async function submitFeedback() {
     selectedRate.value = null;
   } catch (e) {
     console.error(e);
-    open("등록에 실패했습니다.", "error");
+    const status = e?.response?.status;
+    const data = e?.response?.data;
+    const serverMsg = data?.message || data?.error || (typeof data === "string" ? data : null);
+    let msg;
+    if (status === 401) {
+      msg = "로그인 후 의견을 등록할 수 있습니다.";
+    } else if (status === 403) {
+      msg = serverMsg || "권한이 없습니다.";
+    } else if (status === 400 && serverMsg) {
+      msg = serverMsg;
+    } else if (status === 429) {
+      msg = "요청이 너무 많습니다. 잠시 후 다시 시도해주세요.";
+    } else {
+      msg = serverMsg || "등록에 실패했습니다.";
+    }
+    open(msg, "error");
   } finally {
     submitting.value = false;
   }
