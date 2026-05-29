@@ -98,6 +98,8 @@
 
 <script setup>
 import { computed, ref, watch } from "vue";
+import { useRouter } from "vue-router";
+const router = useRouter();
 import { useAuthStore } from "@/stores/auth";
 import { loginApi } from "@/api/auth";
 import { loginStart as pkLoginStart, loginFinish as pkLoginFinish } from "@/api/webauthn";
@@ -131,6 +133,12 @@ async function passkeyLogin() {
     open("Passkey 로그인 성공!", "success");
     model.value = false;
     emit("success");
+    // If we logged in from a dead/404 URL, bounce to home so the user
+    // actually sees something useful instead of "I'm a not found".
+    try {
+      const rname = router.currentRoute.value?.name;
+      if (!rname || rname === "notFound") router.push("/");
+    } catch (_) {}
   } catch (e) {
     console.error(e);
     open(e?.message?.includes("canceled") ? "취소되었습니다." : "Passkey 로그인 실패", "error");
