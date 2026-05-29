@@ -26,14 +26,8 @@
         @keyup.enter="login"
       />
 
-      <!-- Cloudflare Turnstile -->
-      <div
-        class="cf-turnstile mb-2"
-        data-sitekey="0x4AAAAAADYJm08LeNJZIsCY"
-        data-callback="onLoginTurnstileSuccess"
-        data-error-callback="onLoginTurnstileError"
-        data-expired-callback="onLoginTurnstileExpired"
-      />
+      <!-- Cloudflare Turnstile — explicit render so it survives dialog mount/unmount -->
+      <div ref="turnstileBox" class="mb-2" style="min-height: 65px" />
 
       <v-alert v-if="error" type="error" variant="tonal" class="mb-3">
         {{ error }}
@@ -44,6 +38,7 @@
         size="large"
         class="mt-2"
         :loading="loading"
+        :disabled="!turnstileToken"
         @click="login"
       >
         로그인
@@ -86,23 +81,45 @@
 import { computed, ref, watch } from "vue";
 import { useAuthStore } from "@/stores/auth";
 import { loginApi } from "@/api/auth";
+import { nextTick } from "vue";
 
-// --- Cloudflare Turnstile ---
+// --- Cloudflare Turnstile (explicit render API) ---
+// The auto-render mode (class="cf-turnstile") scans the DOM once at script
+// load. Our widget lives inside <v-dialog>, which mounts later — so we have
+// to drive render() ourselves whenever the dialog opens.
+const TURNSTILE_SITEKEY = "0x4AAAAAADYJm08LeNJZIsCY";
+const turnstileBox = ref(null);
 const turnstileToken = ref("");
-function onLoginTurnstileSuccess(t) { turnstileToken.value = t || ""; }
-function onLoginTurnstileError()    { turnstileToken.value = ""; }
-function onLoginTurnstileExpired()  { turnstileToken.value = ""; }
-if (typeof window !== "undefined") {
-  window.onLoginTurnstileSuccess = onLoginTurnstileSuccess;
-  window.onLoginTurnstileError   = onLoginTurnstileError;
-  window.onLoginTurnstileExpired = onLoginTurnstileExpired;
-  if (!document.getElementById("cf-turnstile-script")) {
-    const __s = document.createElement("script");
-    __s.id = "cf-turnstile-script";
-    __s.src = "https://challenges.cloudflare.com/turnstile/v0/api.js";
-    __s.async = true; __s.defer = true;
-    document.head.appendChild(__s);
+let turnstileWidgetId = null;
+
+if (typeof window !== "undefined" && !document.getElementById("cf-turnstile-script")) {
+  const __s = document.createElement("script");
+  __s.id = "cf-turnstile-script";
+  __s.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+  __s.async = true; __s.defer = true;
+  document.head.appendChild(__s);
+}
+
+function mountTurnstile() {
+  if (!turnstileBox.value) return;
+  if (!window.turnstile) { setTimeout(mountTurnstile, 200); return; }
+  if (turnstileWidgetId != null) {
+    try { window.turnstile.reset(turnstileWidgetId); } catch (_) {}
+    return;
   }
+  turnstileWidgetId = window.turnstile.render(turnstileBox.value, {
+    sitekey: TURNSTILE_SITEKEY,
+    callback: (t) => { turnstileToken.value = t || ""; },
+    "error-callback":   () => { turnstileToken.value = ""; },
+    "expired-callback": () => { turnstileToken.value = ""; },
+  });
+}
+function unmountTurnstile() {
+  turnstileToken.value = "";
+  if (window.turnstile && turnstileWidgetId != null) {
+    try { window.turnstile.remove(turnstileWidgetId); } catch (_) {}
+  }
+  turnstileWidgetId = null;
 }
 
 const props = defineProps({ modelValue: Boolean });
@@ -168,4 +185,20 @@ function goSignup() {
   emit("go-signup");
   model.value = false;
 }
+
+
+// Mount the widget when the dialog opens, tear it down when it closes.
+import { watch as __cfWatch } from "vue";
+__cfWatch(
+  () => model.value,
+  async (open) => {
+    if (open) {
+      await nextTick();
+      mountTurnstile();
+    } else {
+      unmountTurnstile();
+    }
+  },
+  { immediate: true },
+);
 </script>
