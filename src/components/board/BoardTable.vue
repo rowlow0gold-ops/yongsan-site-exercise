@@ -8,7 +8,7 @@
           :loading="loading"
           loading-text="불러오는 중..."
           item-value="id"
-          class="board1-table"
+          class="board1-table comfy-table"
           density="comfortable"
           hide-default-footer
         >
@@ -157,9 +157,17 @@ function goWrite() {
 <style scoped>
 .board1-table :deep(.v-data-table__td),
 .board1-table :deep(.v-data-table__th) {
-  padding-top: 14px;
-  padding-bottom: 14px;
+  padding-top: 20px;
+  padding-bottom: 20px;
+  padding-left: 18px;
+  padding-right: 18px;
 }
+
+/* extra breathing room around the data-table inside the card */
+.comfy-table {
+  padding: 8px 4px;
+}
+
 
 .board1-table :deep(tr:hover td) {
   background: rgba(0, 0, 0, 0.04);

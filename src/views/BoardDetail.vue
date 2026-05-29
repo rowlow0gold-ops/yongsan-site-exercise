@@ -488,13 +488,31 @@ function goList() {
 
 /* Content Area */
 .content-area {
-  padding: 18px 6px;
-  min-height: 260px;
+  padding: 28px 16px;
+  min-height: 320px;
+  background: #fff;
+  border-radius: 8px;
+  margin: 16px 0 24px;
 }
 
 .paragraph {
-  line-height: 1.75;
-  margin: 0 0 10px;
-  font-size: 14px;
+  line-height: 1.85;
+  margin: 0 0 16px;
+  font-size: 15px;
+  color: #1f2937;
+  word-break: break-word;
+}
+
+.paragraph:last-child {
+  margin-bottom: 0;
+}
+
+/* Cross-fade when the detail body swaps in (after fetch) */
+.content-area {
+  animation: contentFadeIn 240ms ease both;
+}
+@keyframes contentFadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 </style>

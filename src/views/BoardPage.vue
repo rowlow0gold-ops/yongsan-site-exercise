@@ -21,15 +21,18 @@
     </div>
   </div>
 
-  <BoardTable
-    :md-and-up="mdAndUp"
-    :headers="headers"
-    :items="items"
-    :loading="loading"
-    :page="page"
-    :page-count="pageCount"
-    @update:page="onPage"
-  />
+  <Transition name="board-fade" mode="out-in">
+    <BoardTable
+      :key="loading ? 'loading' : page + '-' + items.length"
+      :md-and-up="mdAndUp"
+      :headers="headers"
+      :items="items"
+      :loading="loading"
+      :page="page"
+      :page-count="pageCount"
+      @update:page="onPage"
+    />
+  </Transition>
 </template>
 
 <script setup>
@@ -176,3 +179,18 @@ watch(
   },
 );
 </script>
+
+<style scoped>
+.board-fade-enter-active,
+.board-fade-leave-active {
+  transition: opacity 220ms ease, transform 220ms ease;
+}
+.board-fade-enter-from {
+  opacity: 0;
+  transform: translateY(6px);
+}
+.board-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
+}
+</style>
