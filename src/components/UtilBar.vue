@@ -55,7 +55,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from "vue";
+import { ref, computed, onMounted, onUnmounted, watch } from "vue";
 import LoginDialog from "@/components/auth/LoginDialog.vue";
 import { useRouter } from "vue-router";
 import { useAuthStore } from "@/stores/auth";
@@ -106,6 +106,22 @@ const jwtLeftText = computed(() => {
   const exp = readAccessExpMs();
   if (!exp) return "";
   return formatMs(exp - now.value);
+});
+
+// Timer-driven hard logout: when the access token expires (the cookie
+// timestamp passes the current time), clear auth state immediately so the
+// countdown + refresh icons hide and the right-side button flips back to
+// "로그인". We don't wait for the next API request to fire a 401.
+const expired = computed(() => {
+  const exp = readAccessExpMs();
+  return exp != null && now.value >= exp;
+});
+let kickedAlready = false;
+watch(expired, (isExp) => {
+  if (!isExp || kickedAlready || !auth.isAuthed) return;
+  kickedAlready = true;
+  auth.clearAuth();
+  open("세션이 만료되었습니다. 다시 로그인해주세요.", "warning");
 });
 
 const refreshing = ref(false);
