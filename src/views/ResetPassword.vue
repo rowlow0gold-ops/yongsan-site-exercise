@@ -1,7 +1,7 @@
 <script setup>
-import { ref, computed } from "vue";
+import { ref, computed, onMounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { confirmPasswordResetApi } from "@/api/auth";
+import { confirmPasswordResetApi, validatePasswordResetTokenApi } from "@/api/auth";
 import { useAlert } from "@/composables/useAlert";
 import { useSeo } from "@/composables/useSeo";
 
@@ -18,6 +18,21 @@ const pw2 = ref("");
 const show = ref(false);
 const submitting = ref(false);
 const error = ref("");
+
+// 3-state token check: "checking" (initial), "ok" (form shown), "bad" (refuse).
+// Without this, a user could re-visit /reset-password?token=ABC after a
+// successful reset (where ABC is already invalidated server-side) and see
+// the form pop up — confusing, looks like the system is broken.
+const tokenState = ref("checking");
+onMounted(async () => {
+  if (!token) { tokenState.value = "bad"; return; }
+  try {
+    const { data } = await validatePasswordResetTokenApi(token);
+    tokenState.value = data?.valid ? "ok" : "bad";
+  } catch (_) {
+    tokenState.value = "bad";
+  }
+});
 
 const pwError = computed(() => {
   const v = pw.value;
@@ -74,8 +89,13 @@ async function submit() {
     <v-card class="pa-6" rounded="xl" max-width="480" width="100%">
     <h2 class="text-h6 mb-2">새 비밀번호 설정</h2>
 
-    <v-alert v-if="!token" type="error" variant="tonal">
-      유효하지 않은 링크입니다. 비밀번호 재설정을 처음부터 다시 진행해주세요.
+    <div v-if="tokenState === 'checking'" class="text-center py-6">
+      <v-progress-circular indeterminate color="primary" size="40" />
+      <p class="text-body-2 text-medium-emphasis mt-3">링크를 확인하는 중...</p>
+    </div>
+
+    <v-alert v-else-if="tokenState === 'bad'" type="error" variant="tonal">
+      유효하지 않거나 이미 사용된 링크입니다. 비밀번호 재설정을 처음부터 다시 진행해주세요.
     </v-alert>
 
     <template v-else>

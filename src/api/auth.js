@@ -60,3 +60,6 @@ export function requestPasswordResetApi(email, cfTurnstileToken) {
 export function confirmPasswordResetApi(token, newPassword) {
   return api.post("/auth/password-reset/confirm", { token, newPassword });
 }
+export function validatePasswordResetTokenApi(token) {
+  return api.post("/auth/password-reset/validate", { token });
+}

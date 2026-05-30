@@ -1,5 +1,5 @@
 <template>
-  <v-dialog v-model="model" max-width="440" persistent>
+  <v-dialog v-model="model" max-width="460" persistent>
     <v-card rounded="xl" class="pa-6">
       <div class="d-flex align-center justify-space-between mb-2">
         <v-btn icon variant="text" @click="closeDialog">
@@ -23,13 +23,44 @@
         :error-messages="emailFieldError"
         :error="!!emailFieldError"
         hide-details="auto"
-        @keyup.enter="passkeyLogin"
+        @keyup.enter="passwordLogin"
       />
+
+      <label class="field-label">비밀번호</label>
+      <v-text-field
+        v-model="password"
+        :type="showPassword ? 'text' : 'password'"
+        placeholder="비밀번호 입력"
+        variant="outlined"
+        density="comfortable"
+        name="password"
+        autocomplete="current-password"
+        class="mb-3"
+        hide-details="auto"
+        :append-inner-icon="showPassword ? 'mdi-eye-off' : 'mdi-eye'"
+        @click:append-inner="showPassword = !showPassword"
+        @keyup.enter="passwordLogin"
+      />
+
+      <!-- Turnstile (required for password login — passkey doesn't need it) -->
+      <div class="ts-frame mb-2">
+        <div ref="turnstileBox" style="min-height: 65px" />
+      </div>
 
       <v-alert v-if="error" type="error" variant="tonal" class="mb-3">{{ error }}</v-alert>
 
       <v-btn
-        block color="primary" size="large" class="mb-3"
+        block color="primary" size="large" class="mb-2"
+        prepend-icon="mdi-login"
+        :loading="passwordLoading"
+        :disabled="!canPasswordLogin"
+        @click="passwordLogin"
+      >
+        비밀번호로 로그인
+      </v-btn>
+
+      <v-btn
+        block color="secondary" variant="tonal" size="large" class="mb-3"
         prepend-icon="mdi-key-variant"
         :loading="pkLoading || checkingEmail"
         :disabled="!isEmailValid || pkLoading || checkingEmail"
@@ -62,11 +93,11 @@
 </template>
 
 <script setup>
-import { computed, ref, watch } from "vue";
+import { computed, ref, watch, nextTick, onMounted, onUnmounted } from "vue";
 import { useRouter } from "vue-router";
 import { useAuthStore } from "@/stores/auth";
 import { loginStart as pkLoginStart, loginFinish as pkLoginFinish } from "@/api/webauthn";
-import { emailExistsApi } from "@/api/auth";
+import { emailExistsApi, loginApi } from "@/api/auth";
 import { bufToB64Url, b64UrlToBuf } from "@/lib/webauthn";
 import { useAlert } from "@/composables/useAlert";
 
@@ -82,33 +113,98 @@ const model = computed({
 });
 
 const email = ref("");
+const password = ref("");
+const showPassword = ref(false);
 const error = ref("");
 const pkLoading = ref(false);
+const passwordLoading = ref(false);
 const checkingEmail = ref(false);
 
-// Microsoft-style: identifier required before passkey, but Google/Kakao/
-// Signup don't need it — so the field can stay empty without surfacing a
-// red error. We deliberately do NOT use Vuetify's `rules` or `required`
-// here, because both fire on blur and would flash the "required" error
-// when the user clicks Google/Kakao/Signup. Instead:
-//   - emailFieldError surfaces ONLY when there's text and it's malformed
-//   - isEmailValid gates the Passkey button
-//   - passkeyLogin() has a hard check that shows its own error if empty
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const isEmailValid = computed(() => EMAIL_RE.test(email.value || ""));
 const emailFieldError = computed(() => {
   const v = email.value;
-  if (!v) return ""; // empty = pristine, never error on Google/Kakao path
+  if (!v) return "";
   if (!EMAIL_RE.test(v)) return "유효한 이메일을 입력해주세요.";
   return "";
 });
 
-// NOTE: Turnstile was removed from this dialog. It existed as a brute-force
-// shield for password login; with password gone and only passkey + OAuth
-// remaining (both bot-resistant by design), it was just user friction.
-//
-// WebAuthn Conditional UI was also removed — see git history. It auto-fires
-// the OS passkey sheet on dialog open, bypassing the email-required gate.
+// Password login is the brute-forceable path, so it gets Turnstile + email + password gates.
+// Passkey is unbruteforceable, so it skips Turnstile.
+// Google/Kakao redirect away to provider OAuth, no local gates.
+const canPasswordLogin = computed(() =>
+  !passwordLoading.value
+  && isEmailValid.value
+  && !!password.value
+  && !!turnstileToken.value
+);
+
+// ---------------- Cloudflare Turnstile (explicit render) ----------------
+const TURNSTILE_SITEKEY = "0x4AAAAAADYJm08LeNJZIsCY";
+const turnstileBox = ref(null);
+const turnstileToken = ref("");
+let turnstileWidgetId = null;
+
+function ensureTurnstileScript() {
+  if (typeof window === "undefined") return;
+  if (document.getElementById("cf-turnstile-script")) return;
+  const s = document.createElement("script");
+  s.id = "cf-turnstile-script";
+  s.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+  s.async = true; s.defer = true;
+  document.head.appendChild(s);
+}
+function mountTurnstile() {
+  if (!turnstileBox.value) return;
+  if (!window.turnstile) { setTimeout(mountTurnstile, 200); return; }
+  if (turnstileWidgetId != null) {
+    try { window.turnstile.reset(turnstileWidgetId); } catch (_) {}
+    return;
+  }
+  turnstileWidgetId = window.turnstile.render(turnstileBox.value, {
+    sitekey: TURNSTILE_SITEKEY,
+    callback: (t) => { turnstileToken.value = t || ""; },
+    "error-callback":   () => { turnstileToken.value = ""; },
+    "expired-callback": () => { turnstileToken.value = ""; },
+  });
+}
+function unmountTurnstile() {
+  turnstileToken.value = "";
+  if (window.turnstile && turnstileWidgetId != null) {
+    try { window.turnstile.remove(turnstileWidgetId); } catch (_) {}
+  }
+  turnstileWidgetId = null;
+}
+
+async function passwordLogin() {
+  if (passwordLoading.value) return;
+  if (!isEmailValid.value) { error.value = "유효한 이메일을 입력해주세요."; return; }
+  if (!password.value) { error.value = "비밀번호를 입력해주세요."; return; }
+  if (!turnstileToken.value) { error.value = "사람 확인을 완료해주세요."; return; }
+  error.value = "";
+  passwordLoading.value = true;
+  try {
+    const { data } = await loginApi(email.value.trim(), password.value, turnstileToken.value);
+    auth.setAuth({ user: data });
+    open("로그인 되었습니다.", "success");
+    model.value = false;
+    emit("success");
+  } catch (e) {
+    console.error(e);
+    error.value =
+      e?.response?.data?.message ||
+      (e?.response?.status === 401
+        ? "이메일 또는 비밀번호가 올바르지 않습니다."
+        : "로그인 실패. 잠시 후 다시 시도해주세요.");
+    // Single-use Turnstile token — reset on failure
+    if (window.turnstile && turnstileWidgetId != null) {
+      try { window.turnstile.reset(turnstileWidgetId); } catch (_) {}
+    }
+    turnstileToken.value = "";
+  } finally {
+    passwordLoading.value = false;
+  }
+}
 
 async function completePasskey(assertion, challenge) {
   const credentialId = bufToB64Url(assertion.rawId);
@@ -125,16 +221,9 @@ async function completePasskey(assertion, challenge) {
 
 async function passkeyLogin() {
   if (pkLoading.value || checkingEmail.value) return;
-  if (!isEmailValid.value) {
-    error.value = "유효한 이메일을 입력해주세요.";
-    return;
-  }
+  if (!isEmailValid.value) { error.value = "유효한 이메일을 입력해주세요."; return; }
   error.value = "";
 
-  // Step 1: probe the server to see if this email is a registered account.
-  // Until this returns true, we don't even consider calling WebAuthn —
-  // that prevents the silent identity-swap where any passkey on the device
-  // could log the user in regardless of the email they typed.
   checkingEmail.value = true;
   try {
     const { data } = await emailExistsApi(email.value.trim());
@@ -152,8 +241,6 @@ async function passkeyLogin() {
     checkingEmail.value = false;
   }
 
-  // Step 2: kick off WebAuthn. (Backend still uses the discoverable-credential
-  // flow — narrowing allowCredentials by email is task #51's follow-up.)
   pkLoading.value = true;
   try {
     const { data: opts } = await pkLoginStart();
@@ -189,10 +276,26 @@ function social(provider) {
   window.location.href = `${base}/oauth2/authorization/${provider}`;
 }
 
-// Reset on open/close
-watch(() => model.value, (openNow) => {
-  if (openNow) { email.value = ""; error.value = ""; }
+// Reset on open/close, mount/unmount Turnstile
+watch(() => model.value, async (openNow) => {
+  if (openNow) {
+    email.value = ""; password.value = ""; error.value = "";
+    ensureTurnstileScript();
+    await nextTick();
+    mountTurnstile();
+  } else {
+    unmountTurnstile();
+  }
 });
+
+onMounted(async () => {
+  if (model.value) {
+    ensureTurnstileScript();
+    await nextTick();
+    mountTurnstile();
+  }
+});
+onUnmounted(unmountTurnstile);
 </script>
 
 <style scoped>
