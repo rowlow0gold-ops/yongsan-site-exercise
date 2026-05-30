@@ -54,8 +54,8 @@ export function resendVerificationApi() {
 }
 
 // Password reset
-export function requestPasswordResetApi(email) {
-  return api.post("/auth/password-reset/request", { email });
+export function requestPasswordResetApi(email, cfTurnstileToken) {
+  return api.post("/auth/password-reset/request", { email, cfTurnstileToken });
 }
 export function confirmPasswordResetApi(token, newPassword) {
   return api.post("/auth/password-reset/confirm", { token, newPassword });

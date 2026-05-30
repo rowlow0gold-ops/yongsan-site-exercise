@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from "vue";
+import { ref, computed, onMounted, onUnmounted, nextTick } from "vue";
 import { requestPasswordResetApi } from "@/api/auth";
 import { useSeo } from "@/composables/useSeo";
 
@@ -17,13 +17,57 @@ const emailError = computed(() => {
   if (!EMAIL_RE.test(v)) return "올바른 이메일 형식이 아닙니다.";
   return "";
 });
-const canSubmit = computed(() => !submitting.value && EMAIL_RE.test(email.value));
+
+// --- Cloudflare Turnstile (explicit render) ---
+const TURNSTILE_SITEKEY = "0x4AAAAAADYJm08LeNJZIsCY";
+const turnstileBox = ref(null);
+const turnstileToken = ref("");
+let turnstileWidgetId = null;
+function ensureTurnstileScript() {
+  if (document.getElementById("cf-turnstile-script")) return;
+  const s = document.createElement("script");
+  s.id = "cf-turnstile-script";
+  s.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+  s.async = true; s.defer = true;
+  document.head.appendChild(s);
+}
+function mountTurnstile() {
+  if (!turnstileBox.value) return;
+  if (!window.turnstile) { setTimeout(mountTurnstile, 200); return; }
+  if (turnstileWidgetId != null) {
+    try { window.turnstile.reset(turnstileWidgetId); } catch (_) {}
+    return;
+  }
+  turnstileWidgetId = window.turnstile.render(turnstileBox.value, {
+    sitekey: TURNSTILE_SITEKEY,
+    callback: (t) => { turnstileToken.value = t || ""; },
+    "error-callback":   () => { turnstileToken.value = ""; },
+    "expired-callback": () => { turnstileToken.value = ""; },
+  });
+}
+function unmountTurnstile() {
+  turnstileToken.value = "";
+  if (window.turnstile && turnstileWidgetId != null) {
+    try { window.turnstile.remove(turnstileWidgetId); } catch (_) {}
+  }
+  turnstileWidgetId = null;
+}
+onMounted(async () => {
+  ensureTurnstileScript();
+  await nextTick();
+  mountTurnstile();
+});
+onUnmounted(unmountTurnstile);
+
+const canSubmit = computed(() =>
+  !submitting.value && EMAIL_RE.test(email.value) && !!turnstileToken.value
+);
 
 async function submit() {
   if (!canSubmit.value) return;
   submitting.value = true;
   try {
-    await requestPasswordResetApi(email.value.trim());
+    await requestPasswordResetApi(email.value.trim(), turnstileToken.value);
   } catch (_) {
     // server always returns 200 — failure here is a network issue, not a
     // "no such email" hint. We still flip to submitted state to avoid leaking
@@ -57,6 +101,14 @@ async function submit() {
         autofocus
         @keyup.enter="submit"
       />
+
+      <div class="ts-frame mb-4">
+        <div ref="turnstileBox" style="min-height: 65px" />
+      </div>
+      <div v-if="!turnstileToken" class="text-caption text-error mb-3">
+        사람 확인을 완료해주세요.
+      </div>
+
       <v-btn
         block color="primary" size="large"
         :loading="submitting"

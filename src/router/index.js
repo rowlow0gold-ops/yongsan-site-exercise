@@ -229,4 +229,28 @@ router.beforeEach(async (to) => {
 
   return true;
 });
+
+// When the frontend redeploys, the new index.html references newly-hashed
+// chunks (Board1-XYZ.js etc). A user holding an old tab will try to load
+// the OLD chunk that's no longer on the server → "Failed to fetch
+// dynamically imported module". Auto-recover by forcing a hard reload to
+// the target path — they get the new index.html and the new chunk names.
+router.onError((err, to) => {
+  const msg = String(err?.message || "");
+  const looksLikeStaleChunk =
+    msg.includes("dynamically imported module") ||
+    msg.includes("Failed to fetch") ||
+    msg.includes("Importing a module script failed") ||
+    msg.includes("Unable to preload");
+  if (looksLikeStaleChunk) {
+    // Avoid an infinite reload loop if the new bundle is also broken.
+    const key = "__chunk_reload_at__";
+    const last = Number(sessionStorage.getItem(key) || 0);
+    if (Date.now() - last > 10_000) {
+      sessionStorage.setItem(key, String(Date.now()));
+      window.location.assign(to?.fullPath || window.location.pathname);
+    }
+  }
+});
+
 export default router;
