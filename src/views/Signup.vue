@@ -148,7 +148,7 @@
 
         <!-- STEP 3 — Email verification (locked email + 6-digit code + countdown) -->
         <v-stepper-window-item :value="3">
-          <div class="text-center pa-2">
+          <div class="text-center pa-2 verify-step">
             <v-icon size="48" color="primary" class="mb-2">mdi-email-fast-outline</v-icon>
             <h3 class="text-subtitle-1 mb-2">이메일로 보낸 6자리 코드를 입력해주세요</h3>
             <p class="text-body-2 text-medium-emphasis mb-1">
@@ -569,6 +569,12 @@ watch(step, async (s) => {
   font-weight: 600;
   color: #374151;
   margin-bottom: 6px;
+}
+/* Constrain the verification-step contents so the buttons don't stretch
+   the whole stepper width on desktop — looks like a billboard otherwise. */
+.verify-step {
+  max-width: 420px;
+  margin: 0 auto;
 }
 .code-grid {
   display: flex;
