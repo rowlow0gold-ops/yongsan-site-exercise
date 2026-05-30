@@ -123,6 +123,18 @@ const router = createRouter({
       component: () => import("@/views/MyPage.vue"),
       meta: { requiresAuth: true },
     },
+
+    // Email verification + password reset (open access; logic in the page)
+    { path: "/verify", name: "verifyEmail",
+      component: () => import("@/views/VerifyEmail.vue"),
+      meta: { hideTopBar: true } },
+    { path: "/verify-pending", name: "verifyPending",
+      component: () => import("@/views/EmailVerifyPending.vue"),
+      meta: { requiresAuth: true } },
+    { path: "/forgot-password", name: "forgotPassword",
+      component: () => import("@/views/ForgotPassword.vue") },
+    { path: "/reset-password", name: "resetPassword",
+      component: () => import("@/views/ResetPassword.vue") },
   ],
 
   scrollBehavior(to, from, savedPosition) {
@@ -131,9 +143,28 @@ const router = createRouter({
   },
 });
 
+// Pages a logged-in-but-unverified user is allowed to see — everything else
+// bounces them back to /verify-pending. Keep this in sync with the backend
+// EmailVerifiedFilter's allow-list.
+const UNVERIFIED_OK = new Set([
+  "verifyEmail",
+  "verifyPending",
+  "forgotPassword",
+  "resetPassword",
+  "home",       // safe fallback so they're never stuck
+  "notfound",
+]);
+
 router.beforeEach(async (to) => {
   const auth = useAuthStore();
   const { open } = useAlert();
+
+  // Logged-in but not email-verified → only the verify/recovery pages work
+  if (auth.isAuthed && auth.user && auth.user.emailVerified === false) {
+    if (!UNVERIFIED_OK.has(to.name)) {
+      return { name: "verifyPending" };
+    }
+  }
 
   const boardKey = String(to.params?.boardKey || "");
   const id = to.params?.id;

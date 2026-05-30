@@ -344,7 +344,14 @@ async function finishSignup() {
     auth.setAuth({ user: res.data });
     markSubmitted();
 
-    step.value = 3;
+    // Password signup creates an unverified account — route the user straight
+    // to the verify-pending screen. (OAuth signups bypass this whole view.)
+    if (res.data?.emailVerified === false) {
+      step.value = 3;
+      setTimeout(() => router.push({ name: "verifyPending" }), 600);
+    } else {
+      step.value = 3;
+    }
   } catch (e) {
     console.error(e);
     // Show inline error instead of native alert(); preserve the form.

@@ -44,3 +44,19 @@ export function emailExistsApi(email) {
 export function deleteAccountApi() {
   return api.delete("/auth/me");
 }
+
+// Email verification
+export function verifyEmailApi(token) {
+  return api.post("/auth/verify", { token });
+}
+export function resendVerificationApi() {
+  return api.post("/auth/verify/resend");
+}
+
+// Password reset
+export function requestPasswordResetApi(email) {
+  return api.post("/auth/password-reset/request", { email });
+}
+export function confirmPasswordResetApi(token, newPassword) {
+  return api.post("/auth/password-reset/confirm", { token, newPassword });
+}

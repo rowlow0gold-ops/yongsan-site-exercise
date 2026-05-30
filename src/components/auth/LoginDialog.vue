@@ -52,6 +52,11 @@
         계정이 없으신가요?
         <span class="text-primary cursor-pointer" @click="goSignup">회원가입</span>
       </div>
+      <div class="text-center mt-1 text-body-2">
+        <span class="text-primary cursor-pointer" @click="goForgotPassword">
+          비밀번호를 잊으셨나요?
+        </span>
+      </div>
     </v-card>
   </v-dialog>
 </template>
@@ -175,6 +180,10 @@ async function passkeyLogin() {
 
 function closeDialog()  { model.value = false; }
 function goSignup()     { model.value = false; emit("go-signup"); }
+function goForgotPassword() {
+  model.value = false;
+  router.push({ name: "forgotPassword" });
+}
 function social(provider) {
   const base = import.meta.env.VITE_API_BASE_URL || "";
   window.location.href = `${base}/oauth2/authorization/${provider}`;
