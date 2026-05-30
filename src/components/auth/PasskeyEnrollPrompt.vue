@@ -9,21 +9,15 @@
 
       <v-icon size="64" color="primary" class="mb-2">mdi-fingerprint</v-icon>
       <h3 class="text-h6 mb-2">이 기기에 Passkey를 등록할까요?</h3>
-      <p class="text-body-2 text-medium-emphasis mb-5">
+      <p class="text-body-2 text-medium-emphasis mb-3">
         다음 로그인부터는 지문, Face ID 또는 PIN으로 바로 들어올 수 있어요.
         Passkey는 이 기기의 비밀번호 관리자(iCloud Keychain, Google Password Manager 등)에
         안전하게 저장되며, 동일 계정의 다른 기기로도 동기화됩니다.
       </p>
-
-      <v-text-field
-        v-model="nickname"
-        label="별칭 (선택)"
-        :placeholder="defaultNickname"
-        variant="outlined"
-        density="comfortable"
-        class="mb-3"
-        :disabled="enrolling"
-      />
+      <div class="device-chip mb-5">
+        <v-icon size="18" color="primary" class="mr-1">mdi-devices</v-icon>
+        <span class="text-body-2">저장될 이름: <strong>{{ autoName }}</strong></span>
+      </div>
 
       <v-btn
         block color="primary" size="large" class="mb-2"
@@ -48,26 +42,17 @@ import {
   listCredentials as pkList,
 } from "@/api/webauthn";
 import { bufToB64Url, b64UrlToBuf } from "@/lib/webauthn";
+import { detectPasskeyName } from "@/lib/passkeyName";
 
 const auth = useAuthStore();
 const { open: toast } = useAlert();
 
 const open = ref(false);
 const enrolling = ref(false);
-const nickname = ref("");
 
-// Best-effort default nickname based on the browser/OS — saves the user
-// having to type "내 맥북" themselves.
-const defaultNickname = computed(() => {
-  if (typeof navigator === "undefined") return "이 기기";
-  const ua = navigator.userAgent || "";
-  if (/iPhone/i.test(ua)) return "내 iPhone";
-  if (/iPad/i.test(ua)) return "내 iPad";
-  if (/Android/i.test(ua)) return "내 Android";
-  if (/Mac OS X|Macintosh/i.test(ua)) return "내 Mac";
-  if (/Windows/i.test(ua)) return "내 PC";
-  return "이 기기";
-});
+// System-generated name (no user input). Examples:
+//   "Mac · Touch ID", "iPhone · Face ID", "Android · 지문", "Windows · Hello"
+const autoName = computed(() => detectPasskeyName());
 
 // Per-session skip flag. We re-ask on a fresh session (= new tab / browser
 // restart) so a user who clicked "나중에" once isn't locked out forever, but
@@ -104,7 +89,6 @@ async function maybePrompt() {
 function laterDismiss() {
   if (auth.user?.id) sessionStorage.setItem(skipKey(auth.user.id), "1");
   open.value = false;
-  nickname.value = "";
 }
 
 async function enroll() {
@@ -135,12 +119,11 @@ async function enroll() {
     await pkRegFinish({
       credentialId: bufToB64Url(cred.rawId),
       publicKey: bufToB64Url(cred.response.attestationObject),
-      name: (nickname.value || defaultNickname.value).slice(0, 60),
+      name: autoName.value.slice(0, 60),
     });
 
     toast("Passkey 등록 완료! 다음 로그인부터 사용할 수 있어요.", "success");
     open.value = false;
-    nickname.value = "";
   } catch (e) {
     console.error(e);
     const msg = String(e?.message || "");

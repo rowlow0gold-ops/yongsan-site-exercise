@@ -10,6 +10,7 @@ import {
   revokeCredential as pkRevoke,
 } from "@/api/webauthn";
 import { bufToB64Url, b64UrlToBuf } from "@/lib/webauthn";
+import { detectPasskeyName } from "@/lib/passkeyName";
 import { useAlert } from "@/composables/useAlert";
 import { useSeo } from "@/composables/useSeo";
 useSeo({ title: "마이페이지", description: "내 정보 확인", path: "/mypage" });
@@ -26,7 +27,10 @@ const error = ref(null);
 const credentials = ref([]);
 const credLoading = ref(false);
 const enrolling = ref(false);
-const nicknameInput = ref("");
+// System-assigned passkey name. We don't ask the user — Microsoft/Apple/
+// Google all auto-name based on device, and a user-typed nickname is
+// usually forgettable garbage.
+const autoPasskeyName = detectPasskeyName();
 
 async function loadCreds() {
   try {
@@ -87,9 +91,8 @@ async function enrollPasskey() {
     await pkRegFinish({
       credentialId,
       publicKey: publicKeyCose,
-      name: nicknameInput.value || "Passkey",
+      name: autoPasskeyName,
     });
-    nicknameInput.value = "";
     await loadCreds();
     open("Passkey 등록 완료!", "success");
   } catch (e) {
@@ -161,15 +164,10 @@ async function confirmDelete() {
         이 기기에 Passkey를 등록하면 비밀번호 없이 빠르고 안전하게 로그인할 수 있습니다.
       </p>
 
-      <div class="d-flex align-center ga-2 mb-4">
-        <v-text-field
-          v-model="nicknameInput"
-          label="Passkey 이름 (예: MacBook Touch ID)"
-          density="compact"
-          variant="outlined"
-          hide-details
-          style="max-width: 320px"
-        />
+      <div class="d-flex align-center ga-2 mb-4 flex-wrap">
+        <v-chip color="primary" variant="tonal" prepend-icon="mdi-devices">
+          저장될 이름: {{ autoPasskeyName }}
+        </v-chip>
         <v-btn
           color="primary"
           prepend-icon="mdi-key-plus"
