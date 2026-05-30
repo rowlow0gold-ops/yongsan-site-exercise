@@ -423,10 +423,13 @@ async function finishSignup() {
     step.value = 3; // → 이메일 인증
   } catch (e) {
     console.error(e);
-    // Show inline error instead of native alert(); preserve the form.
+    // 409 = duplicate email — server has an explicit message for this.
+    // We stay on step 2 so the user can fix the address or go log in.
     submitError.value =
       e?.response?.data?.message ||
-      "회원가입 실패. 입력 내용을 확인하고 다시 시도해주세요.";
+      (e?.response?.status === 409
+        ? "이미 가입된 이메일입니다. 로그인을 시도해주세요."
+        : "회원가입 실패. 입력 내용을 확인하고 다시 시도해주세요.");
   } finally {
     submitting.value = false;
   }
