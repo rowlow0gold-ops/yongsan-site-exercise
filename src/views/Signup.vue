@@ -259,9 +259,16 @@ watch(step, (s) => {
   }
 }, { immediate: true });
 
-// Leave guard — warn if user started filling the form (step 2+)
+// Leave guard — warn on any back/refresh/close until the whole flow is done.
+// Steps that should warn:
+//   2 — form has data → losing the typed info
+//   3 — account exists but unverified → losing in-flight verification
+// markSubmitted() only fires when we reach step 4 (verified, logged in).
 const { markSubmitted } = useLeaveGuard(
-  () => step.value >= 2 && !!(form.name || form.email || form.password),
+  () =>
+    (step.value === 2 && !!(form.name || form.email || form.password))
+    || step.value === 3,
+  "작성 중인 내용이 사라집니다. 페이지를 떠나시겠습니까?"
 );
 
 const form = reactive({
@@ -419,7 +426,9 @@ async function finishSignup() {
     } else {
       verifyExpiresAt.value = Date.now() + 10 * 60 * 1000;
     }
-    markSubmitted();
+    // NOTE: do NOT markSubmitted here. Account exists but isn't verified —
+    // the leave guard should keep warning until step 4 so the user doesn't
+    // accidentally close the tab mid-verification.
     step.value = 3; // → 이메일 인증
   } catch (e) {
     console.error(e);
@@ -494,6 +503,9 @@ async function submitCode() {
     if (data?.ok) {
       if (data.user) auth.setAuth({ user: data.user });
       open(data?.message || "이메일 인증 완료!", "success");
+      // Whole signup flow is done — disarm the leave-guard so the user
+      // can navigate freely from step 4.
+      markSubmitted();
       step.value = 4; // → 완료
     } else {
       verifyError.value = data?.message || "인증에 실패했습니다.";
