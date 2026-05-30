@@ -54,7 +54,8 @@ async function refresh() {
 </script>
 
 <template>
-  <v-card class="pa-6 text-center" rounded="xl" max-width="520">
+  <div class="verify-pending-page">
+    <v-card class="pa-6 text-center" rounded="xl" max-width="520" width="100%">
     <v-icon size="56" color="primary" class="mb-3">mdi-email-fast-outline</v-icon>
     <h2 class="text-h6 mb-2">이메일 인증을 완료해주세요</h2>
     <p class="text-body-2 text-medium-emphasis mb-2">
@@ -71,5 +72,16 @@ async function refresh() {
     <v-btn block variant="outlined" :loading="sending" @click="resend">
       인증 메일 다시 보내기
     </v-btn>
-  </v-card>
+    </v-card>
+  </div>
 </template>
+
+<style scoped>
+.verify-pending-page {
+  min-height: 70vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+}
+</style>

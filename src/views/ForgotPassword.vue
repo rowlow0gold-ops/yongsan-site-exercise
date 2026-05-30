@@ -36,7 +36,8 @@ async function submit() {
 </script>
 
 <template>
-  <v-card class="pa-6" rounded="xl" max-width="480">
+  <div class="forgot-page">
+    <v-card class="pa-6" rounded="xl" max-width="480" width="100%">
     <h2 class="text-h6 mb-2">비밀번호 재설정</h2>
     <p class="text-body-2 text-medium-emphasis mb-4">
       가입하신 이메일 주소를 입력해주세요. 등록된 계정이라면 비밀번호 재설정 링크를 보내드립니다.
@@ -75,10 +76,18 @@ async function submit() {
         스팸함도 확인해보세요. 메일이 1시간 동안 도착하지 않으면 다시 시도해주세요.
       </p>
     </template>
-  </v-card>
+    </v-card>
+  </div>
 </template>
 
 <style scoped>
+.forgot-page {
+  min-height: 70vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+}
 .field-label {
   display: block;
   font-size: 14px;

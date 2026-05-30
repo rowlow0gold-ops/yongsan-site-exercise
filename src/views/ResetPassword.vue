@@ -70,7 +70,8 @@ async function submit() {
 </script>
 
 <template>
-  <v-card class="pa-6" rounded="xl" max-width="480">
+  <div class="reset-page">
+    <v-card class="pa-6" rounded="xl" max-width="480" width="100%">
     <h2 class="text-h6 mb-2">새 비밀번호 설정</h2>
 
     <v-alert v-if="!token" type="error" variant="tonal">
@@ -128,10 +129,18 @@ async function submit() {
         비밀번호 변경
       </v-btn>
     </template>
-  </v-card>
+    </v-card>
+  </div>
 </template>
 
 <style scoped>
+.reset-page {
+  min-height: 70vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+}
 .field-label {
   display: block;
   font-size: 14px;
