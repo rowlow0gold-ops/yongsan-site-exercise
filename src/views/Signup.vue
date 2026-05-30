@@ -341,12 +341,14 @@ async function finishSignup() {
     const res = await signupApi(form.name, form.email, form.password);
 
     if (res.data?.id) {
-      // Real account creation. Set auth + route to verify-pending.
+      // Real account creation. Set auth + route straight to /verify-pending
+      // where the 6-digit code input lives.
       auth.setAuth({ user: res.data });
       markSubmitted();
-      step.value = 3;
       if (res.data?.emailVerified === false) {
-        setTimeout(() => router.push({ name: "verifyPending" }), 600);
+        router.push({ name: "verifyPending" });
+      } else {
+        step.value = 3;
       }
     } else {
       // Generic OK — either the email was already taken or we silently rejected

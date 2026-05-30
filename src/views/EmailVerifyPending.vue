@@ -1,26 +1,97 @@
 <script setup>
-import { ref } from "vue";
+import { ref, computed, nextTick } from "vue";
 import { useRouter } from "vue-router";
 import { useAuthStore } from "@/stores/auth";
 import { useAlert } from "@/composables/useAlert";
-import { resendVerificationApi, meApi } from "@/api/auth";
+import { resendVerificationApi, verifyEmailApi, meApi } from "@/api/auth";
 import { useSeo } from "@/composables/useSeo";
 
-useSeo({ title: "이메일 인증 필요", description: "이메일 인증을 완료해주세요.", path: "/verify-pending" });
+useSeo({ title: "이메일 인증", description: "6자리 인증 코드를 입력해주세요.", path: "/verify-pending" });
 
 const auth = useAuthStore();
 const router = useRouter();
 const { open } = useAlert();
 
+// 6 individual digit boxes — Microsoft / Apple / Google all use this pattern.
+const digits = ref(["", "", "", "", "", ""]);
+const inputs = ref([]); // template refs to each <input>
 const sending = ref(false);
-const refreshing = ref(false);
+const verifying = ref(false);
+const error = ref("");
+
+const fullCode = computed(() => digits.value.join(""));
+const canSubmit = computed(() => /^\d{6}$/.test(fullCode.value) && !verifying.value);
+
+function onInput(idx, e) {
+  const v = e.target.value.replace(/\D/g, "").slice(-1); // last digit only
+  digits.value[idx] = v;
+  error.value = "";
+  if (v && idx < 5) inputs.value[idx + 1]?.focus();
+  if (fullCode.value.length === 6) verify();
+}
+
+function onKeydown(idx, e) {
+  if (e.key === "Backspace" && !digits.value[idx] && idx > 0) {
+    inputs.value[idx - 1]?.focus();
+  } else if (e.key === "ArrowLeft" && idx > 0) {
+    inputs.value[idx - 1]?.focus();
+  } else if (e.key === "ArrowRight" && idx < 5) {
+    inputs.value[idx + 1]?.focus();
+  }
+}
+
+async function onPaste(e) {
+  const text = (e.clipboardData?.getData("text") || "").replace(/\D/g, "").slice(0, 6);
+  if (!text) return;
+  e.preventDefault();
+  for (let i = 0; i < 6; i++) digits.value[i] = text[i] || "";
+  await nextTick();
+  const targetIdx = Math.min(text.length, 5);
+  inputs.value[targetIdx]?.focus();
+  if (text.length === 6) verify();
+}
+
+async function verify() {
+  if (!canSubmit.value) return;
+  verifying.value = true;
+  error.value = "";
+  try {
+    const { data } = await verifyEmailApi(fullCode.value);
+    if (data?.ok) {
+      // Refresh auth.user so emailVerified flips to true on this tab.
+      try { const { data: me } = await meApi(); auth.setUser(me); } catch (_) {}
+      open(data?.message || "이메일 인증 완료!", "success");
+      router.push("/");
+    } else {
+      error.value = data?.message || "인증에 실패했습니다.";
+      digits.value = ["", "", "", "", "", ""];
+      await nextTick();
+      inputs.value[0]?.focus();
+    }
+  } catch (e) {
+    error.value =
+      e?.response?.data?.message ||
+      (e?.response?.status === 429
+        ? "잘못된 시도가 너무 많습니다. 새 인증 코드를 요청해주세요."
+        : "인증에 실패했습니다.");
+    digits.value = ["", "", "", "", "", ""];
+    await nextTick();
+    inputs.value[0]?.focus();
+  } finally {
+    verifying.value = false;
+  }
+}
 
 async function resend() {
   if (sending.value) return;
   sending.value = true;
   try {
     const { data } = await resendVerificationApi();
-    open(data?.message || "인증 메일을 다시 보냈습니다.", "success");
+    open(data?.message || "새 인증 코드를 보냈습니다.", "success");
+    digits.value = ["", "", "", "", "", ""];
+    error.value = "";
+    await nextTick();
+    inputs.value[0]?.focus();
   } catch (e) {
     open(
       e?.response?.status === 429
@@ -32,46 +103,46 @@ async function resend() {
     sending.value = false;
   }
 }
-
-async function refresh() {
-  if (refreshing.value) return;
-  refreshing.value = true;
-  try {
-    const { data } = await meApi();
-    auth.setUser(data);
-    if (data?.emailVerified) {
-      open("인증이 확인되었습니다!", "success");
-      router.push("/");
-    } else {
-      open("아직 인증되지 않았습니다.", "warning");
-    }
-  } catch (_) {
-    open("확인에 실패했습니다.", "error");
-  } finally {
-    refreshing.value = false;
-  }
-}
 </script>
 
 <template>
   <div class="verify-pending-page">
     <v-card class="pa-6 text-center" rounded="xl" max-width="520" width="100%">
-    <v-icon size="56" color="primary" class="mb-3">mdi-email-fast-outline</v-icon>
-    <h2 class="text-h6 mb-2">이메일 인증을 완료해주세요</h2>
-    <p class="text-body-2 text-medium-emphasis mb-2">
-      <strong>{{ auth.user?.email || "" }}</strong>로 인증 메일을 보냈습니다.
-    </p>
-    <p class="text-body-2 text-medium-emphasis mb-5">
-      메일의 인증 버튼을 클릭하면 회원 기능을 이용하실 수 있습니다.
-      메일이 보이지 않으면 스팸함도 확인해보세요.
-    </p>
+      <v-icon size="56" color="primary" class="mb-3">mdi-email-fast-outline</v-icon>
+      <h2 class="text-h6 mb-2">이메일 인증을 완료해주세요</h2>
+      <p class="text-body-2 text-medium-emphasis mb-2">
+        <strong>{{ auth.user?.email || "" }}</strong>로 6자리 인증 코드를 보냈습니다.
+      </p>
+      <p class="text-body-2 text-medium-emphasis mb-5">
+        메일이 보이지 않으면 스팸함도 확인해보세요. 코드는 10분 동안 유효합니다.
+      </p>
 
-    <v-btn block color="primary" size="large" class="mb-2" :loading="refreshing" @click="refresh">
-      인증 완료 확인
-    </v-btn>
-    <v-btn block variant="outlined" :loading="sending" @click="resend">
-      인증 메일 다시 보내기
-    </v-btn>
+      <div class="code-grid" @paste="onPaste">
+        <input
+          v-for="(_, idx) in digits"
+          :key="idx"
+          :ref="(el) => inputs[idx] = el"
+          v-model="digits[idx]"
+          class="code-cell"
+          inputmode="numeric"
+          maxlength="1"
+          autocomplete="one-time-code"
+          :disabled="verifying"
+          @input="(e) => onInput(idx, e)"
+          @keydown="(e) => onKeydown(idx, e)"
+        />
+      </div>
+
+      <v-alert v-if="error" type="error" variant="tonal" density="compact" class="my-3">
+        {{ error }}
+      </v-alert>
+
+      <v-btn block color="primary" size="large" class="mb-2" :loading="verifying" :disabled="!canSubmit" @click="verify">
+        인증 완료
+      </v-btn>
+      <v-btn block variant="outlined" :loading="sending" @click="resend">
+        인증 코드 다시 보내기
+      </v-btn>
     </v-card>
   </div>
 </template>
@@ -83,5 +154,36 @@ async function refresh() {
   align-items: center;
   justify-content: center;
   padding: 40px 20px;
+}
+.code-grid {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin: 12px 0 8px;
+}
+.code-cell {
+  width: 48px;
+  height: 56px;
+  border: 1.5px solid #d1d5db;
+  border-radius: 10px;
+  font-size: 28px;
+  font-weight: 700;
+  text-align: center;
+  font-family: 'Menlo', 'Consolas', monospace;
+  color: #1f2937;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.code-cell:focus {
+  outline: none;
+  border-color: #2f5597;
+  box-shadow: 0 0 0 3px rgba(47, 85, 151, 0.15);
+}
+.code-cell:disabled {
+  background: #f3f4f6;
+  color: #9ca3af;
+}
+@media (max-width: 480px) {
+  .code-cell { width: 40px; height: 48px; font-size: 24px; }
+  .code-grid { gap: 6px; }
 }
 </style>

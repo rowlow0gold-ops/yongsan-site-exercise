@@ -124,10 +124,8 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
 
-    // Email verification + password reset (open access; logic in the page)
-    { path: "/verify", name: "verifyEmail",
-      component: () => import("@/views/VerifyEmail.vue"),
-      meta: { hideTopBar: true } },
+    // Email verification (6-digit code) + password reset
+    // /verify-pending is where the user enters the 6-digit code from email
     { path: "/verify-pending", name: "verifyPending",
       component: () => import("@/views/EmailVerifyPending.vue"),
       meta: { requiresAuth: true } },
@@ -147,7 +145,6 @@ const router = createRouter({
 // bounces them back to /verify-pending. Keep this in sync with the backend
 // EmailVerifiedFilter's allow-list.
 const UNVERIFIED_OK = new Set([
-  "verifyEmail",
   "verifyPending",
   "forgotPassword",
   "resetPassword",

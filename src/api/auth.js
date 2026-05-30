@@ -45,9 +45,9 @@ export function deleteAccountApi() {
   return api.delete("/auth/me");
 }
 
-// Email verification
-export function verifyEmailApi(token) {
-  return api.post("/auth/verify", { token });
+// Email verification (6-digit code, authenticated user)
+export function verifyEmailApi(code) {
+  return api.post("/auth/verify", { code });
 }
 export function resendVerificationApi() {
   return api.post("/auth/verify/resend");
