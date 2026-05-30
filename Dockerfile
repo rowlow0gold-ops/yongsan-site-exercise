@@ -23,9 +23,17 @@ RUN echo 'server { \
     add_header Referrer-Policy "no-referrer" always; \
     add_header Permissions-Policy "geolocation=(), microphone=(), camera=()" always; \
     add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always; \
+    root /usr/share/nginx/html; \
+    index index.html; \
+    # Hashed assets: if missing, return a real 404 instead of falling through \
+    # to index.html. Falling through causes the browser to receive HTML when \
+    # it expected JS/CSS, which trips strict MIME checks and breaks the SPA \
+    # for any user still on an old tab after a redeploy. \
+    location ^~ /assets/ { \
+        try_files $uri =404; \
+    } \
+    # Everything else: SPA fallback to index.html for client-side routing. \
     location / { \
-        root /usr/share/nginx/html; \
-        index index.html; \
         try_files $uri $uri/ /index.html; \
     } \
 }' > /etc/nginx/conf.d/default.conf
