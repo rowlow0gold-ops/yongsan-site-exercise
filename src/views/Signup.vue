@@ -158,7 +158,7 @@
 <script setup>
 import { computed, reactive, ref, watch } from "vue";
 import { useRouter, useRoute } from "vue-router";
-import { signupApi, loginApi } from "@/api/auth";
+import { signupApi } from "@/api/auth";
 import { useAuthStore } from "@/stores/auth";
 import { useLeaveGuard } from "@/composables/useLeaveGuard";
 import { useSeo } from "@/composables/useSeo";
@@ -332,25 +332,26 @@ async function finishSignup() {
 
   submitting.value = true;
   try {
-    // 1) signup (server replies generically; we can't tell from the response
-    //    whether the email was new or already taken — that's deliberate, see
-    //    audit: email enumeration mitigation)
-    await signupApi(form.name, form.email, form.password);
+    // Single call. The backend creates the account, mints session cookies
+    // inline, and returns the user record. No separate auto-login round-trip
+    // (which would need a Turnstile token we don't collect here).
+    // Body is either {id, email, name, role, emailVerified} on a brand-new
+    // account, or {message: "OK"} on duplicate-email (we don't tell which —
+    // enumeration mitigation).
+    const res = await signupApi(form.name, form.email, form.password);
 
-    // 2) auto login (will fail if the email was taken with a different password)
-    const res = await loginApi(form.email, form.password);
-    // Cookie auth: login response is the user record directly; the access
-    // token lives in an HttpOnly cookie now.
-    auth.setAuth({ user: res.data });
-    markSubmitted();
-
-    // Password signup creates an unverified account — route the user straight
-    // to the verify-pending screen. (OAuth signups bypass this whole view.)
-    if (res.data?.emailVerified === false) {
+    if (res.data?.id) {
+      // Real account creation. Set auth + route to verify-pending.
+      auth.setAuth({ user: res.data });
+      markSubmitted();
       step.value = 3;
-      setTimeout(() => router.push({ name: "verifyPending" }), 600);
+      if (res.data?.emailVerified === false) {
+        setTimeout(() => router.push({ name: "verifyPending" }), 600);
+      }
     } else {
-      step.value = 3;
+      // Generic OK — either the email was already taken or we silently rejected
+      // it. Show a hint and let the user retry / go log in.
+      submitError.value = "이미 사용 중인 이메일일 수 있습니다. 로그인을 시도해보세요.";
     }
   } catch (e) {
     console.error(e);
