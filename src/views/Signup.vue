@@ -192,6 +192,15 @@ watch(agreeAll, (v) => {
 
 const canGoStep2 = computed(() => agreeTerms.value && agreePrivacy.value);
 
+// Guard against direct URL access to ?step=2 without consenting to step 1.
+// If someone types /signup?step=2, force them back to step 1 — they have to
+// actually check the required boxes before basic-info opens.
+watch(step, (s) => {
+  if (s >= 2 && !canGoStep2.value) {
+    step.value = 1;
+  }
+}, { immediate: true });
+
 // Leave guard — warn if user started filling the form (step 2+)
 const { markSubmitted } = useLeaveGuard(
   () => step.value >= 2 && !!(form.name || form.email || form.password),

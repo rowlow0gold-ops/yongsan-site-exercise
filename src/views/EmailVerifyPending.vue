@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, nextTick } from "vue";
+import { ref, computed, nextTick, onMounted, onUnmounted } from "vue";
 import { useRouter } from "vue-router";
 import { useAuthStore } from "@/stores/auth";
 import { useAlert } from "@/composables/useAlert";
@@ -21,6 +21,35 @@ const error = ref("");
 
 const fullCode = computed(() => digits.value.join(""));
 const canSubmit = computed(() => /^\d{6}$/.test(fullCode.value) && !verifying.value);
+
+// 60-second cooldown after each resend so users can't spam-click. Backend
+// also enforces 3/hour via rate-limit, but the UI feedback is what
+// stops accidental double-clicks.
+const RESEND_COOLDOWN = 60;
+const cooldownLeft = ref(0);
+let cooldownTimer = null;
+function startCooldown() {
+  cooldownLeft.value = RESEND_COOLDOWN;
+  // Persist so a page refresh respects the cooldown
+  sessionStorage.setItem("verify-resend-until", String(Date.now() + RESEND_COOLDOWN * 1000));
+  clearInterval(cooldownTimer);
+  cooldownTimer = setInterval(() => {
+    cooldownLeft.value = Math.max(0, cooldownLeft.value - 1);
+    if (cooldownLeft.value === 0) clearInterval(cooldownTimer);
+  }, 1000);
+}
+onMounted(() => {
+  const until = Number(sessionStorage.getItem("verify-resend-until") || 0);
+  const remaining = Math.ceil((until - Date.now()) / 1000);
+  if (remaining > 0) {
+    cooldownLeft.value = remaining;
+    cooldownTimer = setInterval(() => {
+      cooldownLeft.value = Math.max(0, cooldownLeft.value - 1);
+      if (cooldownLeft.value === 0) clearInterval(cooldownTimer);
+    }, 1000);
+  }
+});
+onUnmounted(() => clearInterval(cooldownTimer));
 
 function onInput(idx, e) {
   const v = e.target.value.replace(/\D/g, "").slice(-1); // last digit only
@@ -83,13 +112,14 @@ async function verify() {
 }
 
 async function resend() {
-  if (sending.value) return;
+  if (sending.value || cooldownLeft.value > 0) return;
   sending.value = true;
   try {
     const { data } = await resendVerificationApi();
     open(data?.message || "새 인증 코드를 보냈습니다.", "success");
     digits.value = ["", "", "", "", "", ""];
     error.value = "";
+    startCooldown();
     await nextTick();
     inputs.value[0]?.focus();
   } catch (e) {
@@ -99,6 +129,8 @@ async function resend() {
         : "메일 발송에 실패했습니다.",
       "error"
     );
+    // Still start cooldown to discourage rapid retries on errors too.
+    startCooldown();
   } finally {
     sending.value = false;
   }
@@ -140,8 +172,14 @@ async function resend() {
       <v-btn block color="primary" size="large" class="mb-2" :loading="verifying" :disabled="!canSubmit" @click="verify">
         인증 완료
       </v-btn>
-      <v-btn block variant="outlined" :loading="sending" @click="resend">
-        인증 코드 다시 보내기
+      <v-btn block variant="outlined" :loading="sending"
+             :disabled="cooldownLeft > 0 || sending" @click="resend">
+        <template v-if="cooldownLeft > 0">
+          {{ cooldownLeft }}초 후 다시 보내기
+        </template>
+        <template v-else>
+          인증 코드 다시 보내기
+        </template>
       </v-btn>
     </v-card>
   </div>
