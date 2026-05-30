@@ -119,7 +119,8 @@ async function enroll() {
 
     await pkRegFinish({
       credentialId: bufToB64Url(cred.rawId),
-      publicKey: bufToB64Url(cred.response.attestationObject),
+      attestationObject: bufToB64Url(cred.response.attestationObject),
+      clientDataJSON: bufToB64Url(cred.response.clientDataJSON),
       name: autoName.value.slice(0, 60),
     });
 

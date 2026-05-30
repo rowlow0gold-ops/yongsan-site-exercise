@@ -215,8 +215,14 @@ async function passwordLogin() {
 }
 
 async function completePasskey(assertion, challenge) {
-  const credentialId = bufToB64Url(assertion.rawId);
-  const { data: user } = await pkLoginFinish({ credentialId, challenge });
+  const r = assertion.response;
+  const { data: user } = await pkLoginFinish({
+    credentialId: bufToB64Url(assertion.rawId),
+    authenticatorData: bufToB64Url(r.authenticatorData),
+    clientDataJSON:   bufToB64Url(r.clientDataJSON),
+    signature:        bufToB64Url(r.signature),
+    challenge,
+  });
   auth.setAuth({ user });
   open("Passkey 로그인 성공!", "success");
   model.value = false;

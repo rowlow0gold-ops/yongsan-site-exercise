@@ -84,13 +84,10 @@ async function enrollPasskey() {
     };
     const cred = await navigator.credentials.create({ publicKey });
     if (!cred) throw new Error("Passkey enrollment canceled");
-    const credentialId = bufToB64Url(cred.rawId);
-    // attestationObject contains the public key inside CBOR — for the demo we
-    // ship the raw attestationObject bytes; backend stores them as-is.
-    const publicKeyCose = bufToB64Url(cred.response.attestationObject);
     await pkRegFinish({
-      credentialId,
-      publicKey: publicKeyCose,
+      credentialId: bufToB64Url(cred.rawId),
+      attestationObject: bufToB64Url(cred.response.attestationObject),
+      clientDataJSON: bufToB64Url(cred.response.clientDataJSON),
       name: autoPasskeyName,
     });
     await loadCreds();
