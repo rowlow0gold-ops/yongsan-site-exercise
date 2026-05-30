@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted } from "vue";
 import { useRouter } from "vue-router";
-import { meApi, deleteAccountApi } from "@/api/auth";
+import { meApi, deleteAccountApi, updateProfileApi } from "@/api/auth";
 import { useAuthStore } from "@/stores/auth";
 import {
   registerStart as pkRegStart,
@@ -125,6 +125,42 @@ const deleteConfirmText = ref("");
 const deleting = ref(false);
 const DELETE_PHRASE = "탈퇴합니다";
 
+// --- Edit name ---
+const editingName = ref(false);
+const nameDraft = ref("");
+const savingName = ref(false);
+const nameDraftError = computed(() => {
+  const v = (nameDraft.value || "").trim();
+  if (!v) return "이름을 입력해주세요.";
+  if (v.length < 2) return "이름은 2자 이상이어야 합니다.";
+  if (v.length > 50) return "이름은 50자 이하여야 합니다.";
+  return "";
+});
+function startEditName() {
+  nameDraft.value = user.value?.name || "";
+  editingName.value = true;
+}
+function cancelEditName() {
+  editingName.value = false;
+  nameDraft.value = "";
+}
+async function saveName() {
+  if (nameDraftError.value || savingName.value) return;
+  savingName.value = true;
+  try {
+    const { data } = await updateProfileApi({ name: nameDraft.value.trim() });
+    user.value = data;
+    // Reflect into the auth store so the sticky header / other pages see it.
+    auth.setUser(data);
+    editingName.value = false;
+    open("이름이 변경되었습니다.", "success");
+  } catch (e) {
+    open(e?.response?.data?.message || "이름 변경 실패", "error");
+  } finally {
+    savingName.value = false;
+  }
+}
+
 async function confirmDelete() {
   if (deleteConfirmText.value !== DELETE_PHRASE) return;
   deleting.value = true;
@@ -154,7 +190,37 @@ async function confirmDelete() {
     <div v-else-if="user">
       <p><strong>ID:</strong> {{ user.id }}</p>
       <p><strong>Email:</strong> {{ user.email }}</p>
-      <p><strong>Name:</strong> {{ user.name }}</p>
+
+      <div class="d-flex align-center ga-2 mb-2">
+        <strong>Name:</strong>
+        <template v-if="!editingName">
+          <span>{{ user.name }}</span>
+          <v-btn icon="mdi-pencil" size="x-small" variant="text" @click="startEditName" />
+        </template>
+        <template v-else>
+          <v-text-field
+            v-model="nameDraft"
+            density="compact"
+            variant="outlined"
+            hide-details="auto"
+            :error-messages="nameDraftError"
+            :error="!!nameDraftError"
+            maxlength="50"
+            counter="50"
+            style="max-width: 280px"
+            autocomplete="off"
+            @keyup.enter="saveName"
+            @keyup.esc="cancelEditName"
+          />
+          <v-btn size="small" color="primary" :loading="savingName" :disabled="!!nameDraftError" @click="saveName">
+            저장
+          </v-btn>
+          <v-btn size="small" variant="text" :disabled="savingName" @click="cancelEditName">
+            취소
+          </v-btn>
+        </template>
+      </div>
+
       <p><strong>Role:</strong> {{ user.role }}</p>
 
       <v-divider class="my-6" />

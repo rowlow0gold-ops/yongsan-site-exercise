@@ -120,6 +120,10 @@
               density="compact"
               :rules="[rules.required]"
               required
+              name="post-title"
+              autocomplete="off"
+              data-1p-ignore
+              data-lpignore="true"
             />
           </v-col>
 

@@ -50,6 +50,10 @@
                   maxlength="50"
                   validate-on="input lazy"
                   hide-details="auto"
+                  name="signup-name"
+                  autocomplete="off"
+                  data-1p-ignore
+                  data-lpignore="true"
                 />
               </v-col>
               <v-col cols="12" md="6">

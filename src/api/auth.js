@@ -21,6 +21,11 @@ export function meApi() {
   return api.get("/auth/me");
 }
 
+// PATCH /auth/me — update profile (currently just name).
+export function updateProfileApi(patch) {
+  return api.patch("/auth/me", patch);
+}
+
 export function signupApi(name, email, password) {
   return api.post("/auth/signup", { name, email, password });
 }
