@@ -1,6 +1,8 @@
 <script setup>
 import { ref, onMounted } from "vue";
-import { meApi } from "@/api/auth";
+import { useRouter } from "vue-router";
+import { meApi, deleteAccountApi } from "@/api/auth";
+import { useAuthStore } from "@/stores/auth";
 import {
   registerStart as pkRegStart,
   registerFinish as pkRegFinish,
@@ -11,6 +13,9 @@ import { bufToB64Url, b64UrlToBuf } from "@/lib/webauthn";
 import { useAlert } from "@/composables/useAlert";
 import { useSeo } from "@/composables/useSeo";
 useSeo({ title: "마이페이지", description: "내 정보 확인", path: "/mypage" });
+
+const router = useRouter();
+const auth = useAuthStore();
 
 const { open } = useAlert();
 
@@ -110,6 +115,29 @@ function fmtDate(s) {
   if (!s) return "-";
   return new Date(s).toLocaleString();
 }
+
+// --- 탈퇴 ---
+const deleteDialog = ref(false);
+const deleteConfirmText = ref("");
+const deleting = ref(false);
+const DELETE_PHRASE = "탈퇴합니다";
+
+async function confirmDelete() {
+  if (deleteConfirmText.value !== DELETE_PHRASE) return;
+  deleting.value = true;
+  try {
+    await deleteAccountApi();
+    auth.clearAuth();
+    deleteDialog.value = false;
+    open("탈퇴 처리되었습니다. 그동안 이용해주셔서 감사합니다.", "success");
+    router.push("/");
+  } catch (e) {
+    console.error(e);
+    open("탈퇴 실패. 잠시 후 다시 시도해주세요.", "error");
+  } finally {
+    deleting.value = false;
+  }
+}
 </script>
 
 <template>
@@ -179,7 +207,52 @@ function fmtDate(s) {
           아직 등록된 Passkey가 없습니다.
         </v-card-text>
       </v-card>
+
+      <v-divider class="my-8" />
+
+      <h3 class="text-h6 text-error">계정 탈퇴</h3>
+      <p class="text-body-2 text-medium-emphasis mb-3">
+        탈퇴하면 등록된 Passkey, 로그인 세션, 만족도 응답이 영구적으로 삭제됩니다.
+        게시판에 작성한 글의 내용은 보존되지만 작성자는 "탈퇴한 회원"으로 표시되며
+        본인 확인이 불가능해 수정/삭제할 수 없습니다. 이 작업은 되돌릴 수 없습니다.
+      </p>
+      <v-btn variant="outlined" color="error" prepend-icon="mdi-account-remove" @click="deleteDialog = true">
+        탈퇴하기
+      </v-btn>
     </div>
+
+    <!-- 탈퇴 확인 다이얼로그 -->
+    <v-dialog v-model="deleteDialog" max-width="480" persistent>
+      <v-card rounded="xl" class="pa-6">
+        <h3 class="text-h6 mb-2 text-error">정말 탈퇴하시겠습니까?</h3>
+        <p class="text-body-2 mb-4">
+          이 작업은 즉시 적용되며 되돌릴 수 없습니다. 계속 진행하려면
+          아래 입력란에 <strong>{{ DELETE_PHRASE }}</strong>를 입력해주세요.
+        </p>
+        <v-text-field
+          v-model="deleteConfirmText"
+          :placeholder="DELETE_PHRASE"
+          variant="outlined"
+          density="comfortable"
+          autofocus
+          hide-details
+          class="mb-4"
+        />
+        <div class="d-flex justify-end ga-2">
+          <v-btn variant="text" :disabled="deleting" @click="deleteDialog = false; deleteConfirmText = ''">
+            취소
+          </v-btn>
+          <v-btn
+            color="error"
+            :loading="deleting"
+            :disabled="deleteConfirmText !== DELETE_PHRASE"
+            @click="confirmDelete"
+          >
+            영구 탈퇴
+          </v-btn>
+        </div>
+      </v-card>
+    </v-dialog>
   </div>
 </template>
 

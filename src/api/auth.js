@@ -36,3 +36,11 @@ export function exchangeApi(code) {
 export function emailExistsApi(email) {
   return api.post("/auth/email-exists", { email });
 }
+
+// 탈퇴 — permanent account deletion. Server anonymizes the user's posts
+// (kept for community value) and removes everything else tied to the
+// account (passkeys, refresh tokens, satisfaction rows, user row).
+// Server clears both auth cookies on response.
+export function deleteAccountApi() {
+  return api.delete("/auth/me");
+}
