@@ -54,15 +54,16 @@ const enrolling = ref(false);
 //   "Mac · Touch ID", "iPhone · Face ID", "Android · 지문", "Windows · Hello"
 const autoName = computed(() => detectPasskeyName());
 
-// Per-session skip flag. We re-ask on a fresh session (= new tab / browser
-// restart) so a user who clicked "나중에" once isn't locked out forever, but
-// also isn't pestered on every page navigation.
+// Persistent skip — once the user clicks 나중에 we never auto-prompt again on
+// this device. They can still enroll explicitly from /mypage anytime, and if
+// they later enroll, the prompt would have stopped firing anyway (it only
+// shows when the user has zero credentials).
 function skipKey(uid) { return `pk-prompt-skip:${uid}`; }
 
 async function maybePrompt() {
   if (!auth.isAuthed || !auth.user?.id) return;
   if (typeof window === "undefined" || !window.PublicKeyCredential) return;
-  if (sessionStorage.getItem(skipKey(auth.user.id)) === "1") return;
+  if (localStorage.getItem(skipKey(auth.user.id)) === "1") return;
 
   // Only prompt on devices that actually have a platform authenticator
   // (Touch ID / Hello / fingerprint / passcode). Otherwise the create() call
@@ -87,7 +88,7 @@ async function maybePrompt() {
 }
 
 function laterDismiss() {
-  if (auth.user?.id) sessionStorage.setItem(skipKey(auth.user.id), "1");
+  if (auth.user?.id) localStorage.setItem(skipKey(auth.user.id), "1");
   open.value = false;
 }
 
