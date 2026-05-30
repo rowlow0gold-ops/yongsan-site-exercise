@@ -13,13 +13,25 @@ const router = useRouter();
 const route = useRoute();
 const { open } = useAlert();
 
-// Email source priority: ?email= query (login redirect) > sessionStorage
-// (signup just finished) > empty (let user type it).
-const email = ref(
-  String(route.query.email || "")
-  || sessionStorage.getItem("pending-verify-email")
-  || ""
-);
+// Email is set from ?email= query (login redirect) OR ?email= via signup
+// path. It's READ-ONLY here — users can't change it on this page. If they
+// landed here without an email parameter, we bounce them to /login because
+// that means they're trying to verify someone-else's-account by guessing.
+const email = ref(String(route.query.email || ""));
+if (!email.value) {
+  router.replace({ name: "home" });
+}
+
+// Code expiry — server tells us when the most recent code expires on
+// every resend. We start with a 10-minute optimistic estimate.
+const expiresAt = ref(Date.now() + 10 * 60 * 1000);
+const now = ref(Date.now());
+let nowTimer = null;
+const codeRemaining = computed(() => Math.max(0, Math.floor((expiresAt.value - now.value) / 1000)));
+const codeRemainingPretty = computed(() => {
+  const s = codeRemaining.value;
+  return `${Math.floor(s / 60)}분 ${String(s % 60).padStart(2, "0")}초`;
+});
 
 // 6-digit code input
 const digits = ref(["", "", "", "", "", ""]);
@@ -32,7 +44,7 @@ const fullCode = computed(() => digits.value.join(""));
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const isEmailValid = computed(() => EMAIL_RE.test(email.value || ""));
 const canSubmit = computed(() =>
-  isEmailValid.value && /^\d{6}$/.test(fullCode.value) && !verifying.value
+  isEmailValid.value && /^\d{6}$/.test(fullCode.value) && !verifying.value && codeRemaining.value > 0
 );
 
 // 60s resend cooldown — sessionStorage so refresh respects it
@@ -49,6 +61,9 @@ function startCooldown() {
   }, 1000);
 }
 onMounted(() => {
+  // 1-second tick for the code expiry countdown
+  nowTimer = setInterval(() => (now.value = Date.now()), 1000);
+
   const until = Number(sessionStorage.getItem("verify-resend-until") || 0);
   const remaining = Math.ceil((until - Date.now()) / 1000);
   if (remaining > 0) {
@@ -60,7 +75,10 @@ onMounted(() => {
   }
   if (email.value) inputs.value[0]?.focus();
 });
-onUnmounted(() => clearInterval(cooldownTimer));
+onUnmounted(() => {
+  clearInterval(cooldownTimer);
+  clearInterval(nowTimer);
+});
 
 function onInput(idx, e) {
   const v = e.target.value.replace(/\D/g, "").slice(-1);
@@ -125,7 +143,12 @@ async function resend() {
   }
   sending.value = true;
   try {
-    await resendVerificationApi(email.value.trim().toLowerCase());
+    const { data } = await resendVerificationApi(email.value.trim().toLowerCase());
+    if (data?.verificationExpiresAt) {
+      expiresAt.value = new Date(data.verificationExpiresAt).getTime();
+    } else {
+      expiresAt.value = Date.now() + 10 * 60 * 1000;
+    }
     open("입력하신 이메일이 등록되어 있다면 새 인증 코드를 보냈습니다.", "success");
     digits.value = ["", "", "", "", "", ""];
     error.value = "";
@@ -156,16 +179,15 @@ async function resend() {
         코드는 10분 동안 유효합니다.
       </p>
 
-      <v-text-field
-        v-model="email"
-        type="email"
-        placeholder="you@example.com"
-        variant="outlined"
-        density="comfortable"
-        autocomplete="email"
-        class="mb-3 text-start"
-        hide-details="auto"
-      />
+      <p class="text-body-2 text-medium-emphasis mb-1">
+        <strong>{{ email }}</strong>
+      </p>
+      <p v-if="codeRemaining > 0" class="text-body-2 text-medium-emphasis mb-4">
+        코드 만료까지 <strong class="text-primary">{{ codeRemainingPretty }}</strong>
+      </p>
+      <p v-else class="text-body-2 text-error mb-4">
+        코드가 만료되었습니다. 다시 보내기를 눌러 새 코드를 받아주세요.
+      </p>
 
       <div class="code-grid" @paste="onPaste">
         <input

@@ -8,7 +8,9 @@
         <v-divider />
         <v-stepper-item :value="2" title="기본정보" />
         <v-divider />
-        <v-stepper-item :value="3" title="완료" />
+        <v-stepper-item :value="3" title="이메일 인증" />
+        <v-divider />
+        <v-stepper-item :value="4" title="완료" />
       </v-stepper-header>
 
       <v-stepper-window>
@@ -144,10 +146,64 @@
           </v-form>
         </v-stepper-window-item>
 
-        <!-- STEP 3 -->
+        <!-- STEP 3 — Email verification (locked email + 6-digit code + countdown) -->
         <v-stepper-window-item :value="3">
+          <div class="text-center pa-2">
+            <v-icon size="48" color="primary" class="mb-2">mdi-email-fast-outline</v-icon>
+            <h3 class="text-subtitle-1 mb-2">이메일로 보낸 6자리 코드를 입력해주세요</h3>
+            <p class="text-body-2 text-medium-emphasis mb-1">
+              <strong>{{ verifyEmailLocked }}</strong>
+            </p>
+            <p v-if="codeRemaining > 0" class="text-body-2 text-medium-emphasis mb-4">
+              코드 만료까지 <strong class="text-primary">{{ codeRemainingPretty }}</strong>
+            </p>
+            <p v-else class="text-body-2 text-error mb-4">
+              코드가 만료되었습니다. 다시 보내기를 눌러 새 코드를 받아주세요.
+            </p>
+
+            <div class="code-grid" @paste="onPaste">
+              <input
+                v-for="(_, idx) in digits"
+                :key="idx"
+                :ref="(el) => inputs[idx] = el"
+                v-model="digits[idx]"
+                class="code-cell"
+                inputmode="numeric"
+                maxlength="1"
+                autocomplete="one-time-code"
+                :disabled="verifying"
+                @input="(e) => onCodeInput(idx, e)"
+                @keydown="(e) => onCodeKeydown(idx, e)"
+              />
+            </div>
+
+            <v-alert v-if="verifyError" type="error" variant="tonal" density="compact" class="my-3">
+              {{ verifyError }}
+            </v-alert>
+
+            <v-btn block color="primary" size="large" class="mb-2 mt-2"
+                   :loading="verifying" :disabled="!canSubmitCode" @click="submitCode">
+              인증 완료
+            </v-btn>
+            <v-btn block variant="outlined" :loading="resendingCode"
+                   :disabled="resendCooldownLeft > 0 || resendingCode" @click="resendCode">
+              <template v-if="resendCooldownLeft > 0">
+                {{ resendCooldownLeft }}초 후 다시 보내기
+              </template>
+              <template v-else>
+                인증 코드 다시 보내기
+              </template>
+            </v-btn>
+            <v-btn block variant="text" size="small" class="mt-2" @click="step = 2">
+              이메일 변경
+            </v-btn>
+          </div>
+        </v-stepper-window-item>
+
+        <!-- STEP 4 — Done -->
+        <v-stepper-window-item :value="4">
           <v-alert type="success" variant="tonal" class="mb-6">
-            회원가입 UI 완료!
+            회원가입이 완료되었습니다! 🎉
           </v-alert>
 
           <div class="d-flex justify-end">
@@ -160,13 +216,15 @@
 </template>
 
 <script setup>
-import { computed, reactive, ref, watch } from "vue";
+import { computed, reactive, ref, watch, nextTick, onMounted, onUnmounted } from "vue";
 import { useRouter, useRoute } from "vue-router";
-import { signupApi } from "@/api/auth";
+import { signupApi, verifyEmailApi, resendVerificationApi } from "@/api/auth";
+import { useAlert } from "@/composables/useAlert";
 import { useAuthStore } from "@/stores/auth";
 import { useLeaveGuard } from "@/composables/useLeaveGuard";
 import { useSeo } from "@/composables/useSeo";
 const auth = useAuthStore();
+const { open } = useAlert();
 useSeo({ title: "회원가입", description: "용산구 홈페이지 회원가입", path: "/signup" });
 
 const router = useRouter();
@@ -353,14 +411,16 @@ async function finishSignup() {
     // enumeration mitigation).
     const res = await signupApi(form.name, form.email, form.password);
 
-    // Backend always returns {message: ...}, never authenticates the user.
-    // We stash the email for verify-pending (so it can prefill / send the
-    // code request) and route there. No cookies, no auth state — the user
-    // is a non-entity until they enter the 6-digit code from email.
-    sessionStorage.setItem("pending-verify-email", form.email.trim().toLowerCase());
+    // Backend creates the inert account and sends the 6-digit code. Response
+    // tells us when the code expires so we can show a countdown in step 3.
+    verifyEmailLocked.value = res.data?.email || form.email.trim().toLowerCase();
+    if (res.data?.verificationExpiresAt) {
+      verifyExpiresAt.value = new Date(res.data.verificationExpiresAt).getTime();
+    } else {
+      verifyExpiresAt.value = Date.now() + 10 * 60 * 1000;
+    }
     markSubmitted();
-    step.value = 3;
-    setTimeout(() => router.push({ name: "verifyPending" }), 600);
+    step.value = 3; // → 이메일 인증
   } catch (e) {
     console.error(e);
     // Show inline error instead of native alert(); preserve the form.
@@ -371,6 +431,132 @@ async function finishSignup() {
     submitting.value = false;
   }
 }
+
+// ---------------- STEP 3 — Email verification ----------------
+const verifyEmailLocked = ref(""); // email we're trying to verify; locked once step 3 opens
+const verifyExpiresAt = ref(0);    // ms-epoch when the code expires
+const digits = ref(["", "", "", "", "", ""]);
+const inputs = ref([]);
+const verifying = ref(false);
+const verifyError = ref("");
+const resendingCode = ref(false);
+const resendCooldownLeft = ref(0);
+let resendTimer = null;
+const now = ref(Date.now());
+let nowTimer = null;
+onMounted(() => { nowTimer = setInterval(() => (now.value = Date.now()), 1000); });
+onUnmounted(() => {
+  clearInterval(nowTimer);
+  clearInterval(resendTimer);
+});
+
+const codeRemaining = computed(() => Math.max(0, Math.floor((verifyExpiresAt.value - now.value) / 1000)));
+const codeRemainingPretty = computed(() => {
+  const s = codeRemaining.value;
+  return `${Math.floor(s / 60)}분 ${String(s % 60).padStart(2, "0")}초`;
+});
+const fullCode = computed(() => digits.value.join(""));
+const canSubmitCode = computed(() =>
+  /^\d{6}$/.test(fullCode.value) && !verifying.value && codeRemaining.value > 0
+);
+
+function onCodeInput(idx, e) {
+  const v = e.target.value.replace(/\D/g, "").slice(-1);
+  digits.value[idx] = v;
+  verifyError.value = "";
+  if (v && idx < 5) inputs.value[idx + 1]?.focus();
+  if (fullCode.value.length === 6) submitCode();
+}
+function onCodeKeydown(idx, e) {
+  if (e.key === "Backspace" && !digits.value[idx] && idx > 0) inputs.value[idx - 1]?.focus();
+  else if (e.key === "ArrowLeft" && idx > 0) inputs.value[idx - 1]?.focus();
+  else if (e.key === "ArrowRight" && idx < 5) inputs.value[idx + 1]?.focus();
+}
+async function onPaste(e) {
+  const text = (e.clipboardData?.getData("text") || "").replace(/\D/g, "").slice(0, 6);
+  if (!text) return;
+  e.preventDefault();
+  for (let i = 0; i < 6; i++) digits.value[i] = text[i] || "";
+  await nextTick();
+  inputs.value[Math.min(text.length, 5)]?.focus();
+  if (text.length === 6) submitCode();
+}
+
+async function submitCode() {
+  if (!canSubmitCode.value) return;
+  verifying.value = true;
+  verifyError.value = "";
+  try {
+    const { data } = await verifyEmailApi(verifyEmailLocked.value, fullCode.value);
+    if (data?.ok) {
+      if (data.user) auth.setAuth({ user: data.user });
+      open(data?.message || "이메일 인증 완료!", "success");
+      step.value = 4; // → 완료
+    } else {
+      verifyError.value = data?.message || "인증에 실패했습니다.";
+      digits.value = ["", "", "", "", "", ""];
+      await nextTick();
+      inputs.value[0]?.focus();
+    }
+  } catch (err) {
+    verifyError.value =
+      err?.response?.data?.message ||
+      (err?.response?.status === 429
+        ? "잘못된 시도가 너무 많습니다. 새 인증 코드를 요청해주세요."
+        : "인증에 실패했습니다.");
+    digits.value = ["", "", "", "", "", ""];
+    await nextTick();
+    inputs.value[0]?.focus();
+  } finally {
+    verifying.value = false;
+  }
+}
+
+function startResendCooldown() {
+  resendCooldownLeft.value = 60;
+  clearInterval(resendTimer);
+  resendTimer = setInterval(() => {
+    resendCooldownLeft.value = Math.max(0, resendCooldownLeft.value - 1);
+    if (resendCooldownLeft.value === 0) clearInterval(resendTimer);
+  }, 1000);
+}
+
+async function resendCode() {
+  if (resendingCode.value || resendCooldownLeft.value > 0) return;
+  resendingCode.value = true;
+  try {
+    const { data } = await resendVerificationApi(verifyEmailLocked.value);
+    if (data?.verificationExpiresAt) {
+      verifyExpiresAt.value = new Date(data.verificationExpiresAt).getTime();
+    } else {
+      verifyExpiresAt.value = Date.now() + 10 * 60 * 1000;
+    }
+    open("새 인증 코드를 보냈습니다.", "success");
+    digits.value = ["", "", "", "", "", ""];
+    verifyError.value = "";
+    startResendCooldown();
+    await nextTick();
+    inputs.value[0]?.focus();
+  } catch (err) {
+    open(
+      err?.response?.status === 429
+        ? "잠시 후 다시 시도해주세요."
+        : "메일 발송에 실패했습니다.",
+      "error"
+    );
+    startResendCooldown();
+  } finally {
+    resendingCode.value = false;
+  }
+}
+
+// When the user lands on step 3 fresh, focus the first cell.
+watch(step, async (s) => {
+  if (s === 3) {
+    await nextTick();
+    inputs.value[0]?.focus();
+  }
+});
 </script>
 
 <style scoped>
@@ -383,5 +569,33 @@ async function finishSignup() {
   font-weight: 600;
   color: #374151;
   margin-bottom: 6px;
+}
+.code-grid {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin: 12px 0 8px;
+}
+.code-cell {
+  width: 48px;
+  height: 56px;
+  border: 1.5px solid #d1d5db;
+  border-radius: 10px;
+  font-size: 28px;
+  font-weight: 700;
+  text-align: center;
+  font-family: 'Menlo', 'Consolas', monospace;
+  color: #1f2937;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.code-cell:focus {
+  outline: none;
+  border-color: #2f5597;
+  box-shadow: 0 0 0 3px rgba(47, 85, 151, 0.15);
+}
+.code-cell:disabled { background: #f3f4f6; color: #9ca3af; }
+@media (max-width: 480px) {
+  .code-cell { width: 40px; height: 48px; font-size: 24px; }
+  .code-grid { gap: 6px; }
 }
 </style>
