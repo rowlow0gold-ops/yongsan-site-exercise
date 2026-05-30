@@ -73,7 +73,7 @@
                 <label class="field-label">비밀번호</label>
                 <v-text-field
                   v-model="form.password"
-                  placeholder="영문/숫자 포함 12자 이상"
+                  placeholder="영문/숫자 포함 8자 이상"
                   :type="showPassword ? 'text' : 'password'"
                   name="new-password"
                   autocomplete="new-password"
@@ -119,13 +119,6 @@
                   @click:append-inner="showPassword2 = !showPassword2"
                 />
 
-                <!-- Cloudflare Turnstile (explicit render — see script) -->
-                <div class="ts-frame mt-4">
-                  <div ref="turnstileBox" style="min-height: 65px" />
-                </div>
-                <div v-if="!turnstileToken" class="text-caption text-error mt-1">
-                  사람 확인을 완료해주세요.
-                </div>
               </v-col>
             </v-row>
 
@@ -163,7 +156,7 @@
 </template>
 
 <script setup>
-import { computed, reactive, ref, watch, onMounted, onUnmounted, nextTick } from "vue";
+import { computed, reactive, ref, watch } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { signupApi, loginApi } from "@/api/auth";
 import { useAuthStore } from "@/stores/auth";
@@ -233,7 +226,7 @@ const emailRules = [
 
 const passwordRules = [
   (v) => !!v || "비밀번호를 입력해주세요.",
-  (v) => (v || "").length >= 12 || "비밀번호는 12자 이상이어야 합니다.",
+  (v) => (v || "").length >= 8 || "비밀번호는 8자 이상이어야 합니다.",
   (v) => (v || "").length <= 128 || "비밀번호는 128자 이하여야 합니다.",
   (v) => /[A-Za-z]/.test(v || "") || "영문자를 포함해야 합니다.",
   (v) => /\d/.test(v || "") || "숫자를 포함해야 합니다.",
@@ -279,7 +272,7 @@ const emailError = computed(() => {
 const passwordError = computed(() => {
   const v = form.password;
   if (!v) return "";
-  if (v.length < 12) return "비밀번호는 12자 이상이어야 합니다.";
+  if (v.length < 8) return "비밀번호는 8자 이상이어야 합니다.";
   if (v.length > 128) return "비밀번호는 128자 이하여야 합니다.";
   if (!/[A-Za-z]/.test(v)) return "영문자를 포함해야 합니다.";
   if (!/\d/.test(v)) return "숫자를 포함해야 합니다.";
@@ -295,12 +288,12 @@ const password2Error = computed(() => {
 });
 
 // --- Strength meter ---
-// Min server-accepted password is 12 chars; the meter rewards anything
+// Min server-accepted password is 8 chars; the meter rewards anything
 // beyond that floor (length, casing, symbol diversity).
 const passwordStrength = computed(() => {
   const v = form.password || "";
   let score = 0;
-  if (v.length >= 12) score++;
+  if (v.length >= 8) score++;
   if (v.length >= 16) score++;
   if (/[A-Z]/.test(v) && /[a-z]/.test(v)) score++;
   if (/\d/.test(v) && /[^A-Za-z0-9]/.test(v)) score++;
@@ -309,76 +302,9 @@ const passwordStrength = computed(() => {
   return { score, label: labels[score], color: colors[score] };
 });
 
-// ---------------- Cloudflare Turnstile (explicit render) ----------------
-// Auto-render mode was unreliable: the api.js script scans the DOM exactly
-// once on load, so a v-stepper that mounts the widget div *after* the script
-// loaded (or remounts it on step navigation) would silently fail — user
-// would see no CAPTCHA box, only the "사람 확인을 완료해주세요" error.
-// Explicit render gives us a stable `render()` / `reset()` / `remove()` lifecycle
-// tied to step 2 entry.
-const TURNSTILE_SITEKEY = "0x4AAAAAADYJm08LeNJZIsCY";
-const turnstileBox = ref(null);
-const turnstileToken = ref("");
-let turnstileWidgetId = null;
-
-function ensureTurnstileScript() {
-  if (typeof window === "undefined") return;
-  if (document.getElementById("cf-turnstile-script")) return;
-  const s = document.createElement("script");
-  s.id = "cf-turnstile-script";
-  s.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
-  s.async = true; s.defer = true;
-  document.head.appendChild(s);
-}
-
-function mountTurnstile() {
-  if (!turnstileBox.value) return;
-  if (!window.turnstile) { setTimeout(mountTurnstile, 200); return; }
-  if (turnstileWidgetId != null) {
-    try { window.turnstile.reset(turnstileWidgetId); } catch (_) {}
-    return;
-  }
-  turnstileWidgetId = window.turnstile.render(turnstileBox.value, {
-    sitekey: TURNSTILE_SITEKEY,
-    callback: (t) => { turnstileToken.value = t || ""; },
-    "error-callback":   () => { turnstileToken.value = ""; },
-    "expired-callback": () => { turnstileToken.value = ""; },
-  });
-}
-
-function unmountTurnstile() {
-  turnstileToken.value = "";
-  if (window.turnstile && turnstileWidgetId != null) {
-    try { window.turnstile.remove(turnstileWidgetId); } catch (_) {}
-  }
-  turnstileWidgetId = null;
-}
-
-// Mount the widget when (and only when) step 2 is the active panel — the
-// v-stepper-window v-shows the panels rather than remounting them, but on a
-// fresh page load with ?step=1 the div may not be in the DOM yet, so we
-// re-mount whenever step transitions to 2.
-watch(step, async (s) => {
-  if (s === 2) {
-    ensureTurnstileScript();
-    await nextTick();
-    mountTurnstile();
-  }
-}, { immediate: false });
-
-onMounted(async () => {
-  if (step.value === 2) {
-    ensureTurnstileScript();
-    await nextTick();
-    mountTurnstile();
-  } else {
-    // Pre-load the script even on step 1 so it's warm by the time the user
-    // checks the boxes and clicks 다음.
-    ensureTurnstileScript();
-  }
-});
-
-onUnmounted(unmountTurnstile);
+// Turnstile removed from signup. Rate-limit (10/10min/IP) on the backend
+// plus the upcoming email-verification flow (account inert until verified)
+// carry the bot-protection load now. Less friction, same effective floor.
 
 // canFinish gates the submit button on EVERYTHING: filled, valid format,
 // matching, strong enough, and Turnstile passed. The submit button is also
@@ -388,10 +314,9 @@ const canFinish = computed(() => {
   if (!form.name || !form.email || !form.password || !form.password2) return false;
   if (form.password !== form.password2) return false;
   if (!EMAIL_RE.test(form.email)) return false;
-  if (form.password.length < 12 || form.password.length > 128) return false;
+  if (form.password.length < 8 || form.password.length > 128) return false;
   if (!/[A-Za-z]/.test(form.password) || !/\d/.test(form.password)) return false;
   if (/(.)\1{5,}/.test(form.password)) return false;
-  if (!turnstileToken.value) return false;
   return formValid.value !== false; // null on initial mount counts as ok
 });
 
@@ -410,7 +335,7 @@ async function finishSignup() {
     // 1) signup (server replies generically; we can't tell from the response
     //    whether the email was new or already taken — that's deliberate, see
     //    audit: email enumeration mitigation)
-    await signupApi(form.name, form.email, form.password, turnstileToken.value);
+    await signupApi(form.name, form.email, form.password);
 
     // 2) auto login (will fail if the email was taken with a different password)
     const res = await loginApi(form.email, form.password);
@@ -426,9 +351,6 @@ async function finishSignup() {
     submitError.value =
       e?.response?.data?.message ||
       "회원가입 실패. 입력 내용을 확인하고 다시 시도해주세요.";
-    // Bust the Turnstile token — Cloudflare tokens are single-use.
-    if (window.turnstile) { try { window.turnstile.reset(); } catch (_) {} }
-    turnstileToken.value = "";
   } finally {
     submitting.value = false;
   }
