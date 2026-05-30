@@ -1,36 +1,46 @@
 <script setup>
 import { ref, computed, nextTick, onMounted, onUnmounted } from "vue";
-import { useRouter } from "vue-router";
+import { useRouter, useRoute } from "vue-router";
 import { useAuthStore } from "@/stores/auth";
 import { useAlert } from "@/composables/useAlert";
-import { resendVerificationApi, verifyEmailApi, meApi } from "@/api/auth";
+import { resendVerificationApi, verifyEmailApi } from "@/api/auth";
 import { useSeo } from "@/composables/useSeo";
 
 useSeo({ title: "이메일 인증", description: "6자리 인증 코드를 입력해주세요.", path: "/verify-pending" });
 
 const auth = useAuthStore();
 const router = useRouter();
+const route = useRoute();
 const { open } = useAlert();
 
-// 6 individual digit boxes — Microsoft / Apple / Google all use this pattern.
+// Email source priority: ?email= query (login redirect) > sessionStorage
+// (signup just finished) > empty (let user type it).
+const email = ref(
+  String(route.query.email || "")
+  || sessionStorage.getItem("pending-verify-email")
+  || ""
+);
+
+// 6-digit code input
 const digits = ref(["", "", "", "", "", ""]);
-const inputs = ref([]); // template refs to each <input>
+const inputs = ref([]);
 const sending = ref(false);
 const verifying = ref(false);
 const error = ref("");
 
 const fullCode = computed(() => digits.value.join(""));
-const canSubmit = computed(() => /^\d{6}$/.test(fullCode.value) && !verifying.value);
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+const isEmailValid = computed(() => EMAIL_RE.test(email.value || ""));
+const canSubmit = computed(() =>
+  isEmailValid.value && /^\d{6}$/.test(fullCode.value) && !verifying.value
+);
 
-// 60-second cooldown after each resend so users can't spam-click. Backend
-// also enforces 3/hour via rate-limit, but the UI feedback is what
-// stops accidental double-clicks.
+// 60s resend cooldown — sessionStorage so refresh respects it
 const RESEND_COOLDOWN = 60;
 const cooldownLeft = ref(0);
 let cooldownTimer = null;
 function startCooldown() {
   cooldownLeft.value = RESEND_COOLDOWN;
-  // Persist so a page refresh respects the cooldown
   sessionStorage.setItem("verify-resend-until", String(Date.now() + RESEND_COOLDOWN * 1000));
   clearInterval(cooldownTimer);
   cooldownTimer = setInterval(() => {
@@ -48,27 +58,22 @@ onMounted(() => {
       if (cooldownLeft.value === 0) clearInterval(cooldownTimer);
     }, 1000);
   }
+  if (email.value) inputs.value[0]?.focus();
 });
 onUnmounted(() => clearInterval(cooldownTimer));
 
 function onInput(idx, e) {
-  const v = e.target.value.replace(/\D/g, "").slice(-1); // last digit only
+  const v = e.target.value.replace(/\D/g, "").slice(-1);
   digits.value[idx] = v;
   error.value = "";
   if (v && idx < 5) inputs.value[idx + 1]?.focus();
   if (fullCode.value.length === 6) verify();
 }
-
 function onKeydown(idx, e) {
-  if (e.key === "Backspace" && !digits.value[idx] && idx > 0) {
-    inputs.value[idx - 1]?.focus();
-  } else if (e.key === "ArrowLeft" && idx > 0) {
-    inputs.value[idx - 1]?.focus();
-  } else if (e.key === "ArrowRight" && idx < 5) {
-    inputs.value[idx + 1]?.focus();
-  }
+  if (e.key === "Backspace" && !digits.value[idx] && idx > 0) inputs.value[idx - 1]?.focus();
+  else if (e.key === "ArrowLeft" && idx > 0) inputs.value[idx - 1]?.focus();
+  else if (e.key === "ArrowRight" && idx < 5) inputs.value[idx + 1]?.focus();
 }
-
 async function onPaste(e) {
   const text = (e.clipboardData?.getData("text") || "").replace(/\D/g, "").slice(0, 6);
   if (!text) return;
@@ -85,10 +90,11 @@ async function verify() {
   verifying.value = true;
   error.value = "";
   try {
-    const { data } = await verifyEmailApi(fullCode.value);
+    const { data } = await verifyEmailApi(email.value.trim().toLowerCase(), fullCode.value);
     if (data?.ok) {
-      // Refresh auth.user so emailVerified flips to true on this tab.
-      try { const { data: me } = await meApi(); auth.setUser(me); } catch (_) {}
+      // Server has set cookies + returned the user. Flip auth state and go home.
+      if (data.user) auth.setAuth({ user: data.user });
+      sessionStorage.removeItem("pending-verify-email");
       open(data?.message || "이메일 인증 완료!", "success");
       router.push("/");
     } else {
@@ -113,10 +119,14 @@ async function verify() {
 
 async function resend() {
   if (sending.value || cooldownLeft.value > 0) return;
+  if (!isEmailValid.value) {
+    error.value = "이메일을 입력해주세요.";
+    return;
+  }
   sending.value = true;
   try {
-    const { data } = await resendVerificationApi();
-    open(data?.message || "새 인증 코드를 보냈습니다.", "success");
+    await resendVerificationApi(email.value.trim().toLowerCase());
+    open("입력하신 이메일이 등록되어 있다면 새 인증 코드를 보냈습니다.", "success");
     digits.value = ["", "", "", "", "", ""];
     error.value = "";
     startCooldown();
@@ -129,7 +139,6 @@ async function resend() {
         : "메일 발송에 실패했습니다.",
       "error"
     );
-    // Still start cooldown to discourage rapid retries on errors too.
     startCooldown();
   } finally {
     sending.value = false;
@@ -142,12 +151,21 @@ async function resend() {
     <v-card class="pa-6 text-center" rounded="xl" max-width="520" width="100%">
       <v-icon size="56" color="primary" class="mb-3">mdi-email-fast-outline</v-icon>
       <h2 class="text-h6 mb-2">이메일 인증을 완료해주세요</h2>
-      <p class="text-body-2 text-medium-emphasis mb-2">
-        <strong>{{ auth.user?.email || "" }}</strong>로 6자리 인증 코드를 보냈습니다.
+      <p class="text-body-2 text-medium-emphasis mb-3">
+        가입하신 이메일로 6자리 인증 코드를 보냈습니다. 메일이 보이지 않으면 스팸함도 확인해보세요.
+        코드는 10분 동안 유효합니다.
       </p>
-      <p class="text-body-2 text-medium-emphasis mb-5">
-        메일이 보이지 않으면 스팸함도 확인해보세요. 코드는 10분 동안 유효합니다.
-      </p>
+
+      <v-text-field
+        v-model="email"
+        type="email"
+        placeholder="you@example.com"
+        variant="outlined"
+        density="comfortable"
+        autocomplete="email"
+        class="mb-3 text-start"
+        hide-details="auto"
+      />
 
       <div class="code-grid" @paste="onPaste">
         <input
@@ -169,17 +187,14 @@ async function resend() {
         {{ error }}
       </v-alert>
 
-      <v-btn block color="primary" size="large" class="mb-2" :loading="verifying" :disabled="!canSubmit" @click="verify">
+      <v-btn block color="primary" size="large" class="mb-2"
+             :loading="verifying" :disabled="!canSubmit" @click="verify">
         인증 완료
       </v-btn>
       <v-btn block variant="outlined" :loading="sending"
-             :disabled="cooldownLeft > 0 || sending" @click="resend">
-        <template v-if="cooldownLeft > 0">
-          {{ cooldownLeft }}초 후 다시 보내기
-        </template>
-        <template v-else>
-          인증 코드 다시 보내기
-        </template>
+             :disabled="cooldownLeft > 0 || sending || !isEmailValid" @click="resend">
+        <template v-if="cooldownLeft > 0">{{ cooldownLeft }}초 후 다시 보내기</template>
+        <template v-else>인증 코드 다시 보내기</template>
       </v-btn>
     </v-card>
   </div>
@@ -216,10 +231,7 @@ async function resend() {
   border-color: #2f5597;
   box-shadow: 0 0 0 3px rgba(47, 85, 151, 0.15);
 }
-.code-cell:disabled {
-  background: #f3f4f6;
-  color: #9ca3af;
-}
+.code-cell:disabled { background: #f3f4f6; color: #9ca3af; }
 @media (max-width: 480px) {
   .code-cell { width: 40px; height: 48px; font-size: 24px; }
   .code-grid { gap: 6px; }

@@ -50,12 +50,13 @@ export function deleteAccountApi() {
   return api.delete("/auth/me");
 }
 
-// Email verification (6-digit code, authenticated user)
-export function verifyEmailApi(code) {
-  return api.post("/auth/verify", { code });
+// Email verification (6-digit code, PUBLIC — verifies + logs in atomically).
+// Server sets cookies and returns { ok, message, user } on success.
+export function verifyEmailApi(email, code) {
+  return api.post("/auth/verify", { email, code });
 }
-export function resendVerificationApi() {
-  return api.post("/auth/verify/resend");
+export function resendVerificationApi(email) {
+  return api.post("/auth/verify/resend", { email });
 }
 
 // Password reset

@@ -353,21 +353,14 @@ async function finishSignup() {
     // enumeration mitigation).
     const res = await signupApi(form.name, form.email, form.password);
 
-    if (res.data?.id) {
-      // Real account creation. Set auth + route straight to /verify-pending
-      // where the 6-digit code input lives.
-      auth.setAuth({ user: res.data });
-      markSubmitted();
-      if (res.data?.emailVerified === false) {
-        router.push({ name: "verifyPending" });
-      } else {
-        step.value = 3;
-      }
-    } else {
-      // Generic OK — either the email was already taken or we silently rejected
-      // it. Show a hint and let the user retry / go log in.
-      submitError.value = "이미 사용 중인 이메일일 수 있습니다. 로그인을 시도해보세요.";
-    }
+    // Backend always returns {message: ...}, never authenticates the user.
+    // We stash the email for verify-pending (so it can prefill / send the
+    // code request) and route there. No cookies, no auth state — the user
+    // is a non-entity until they enter the 6-digit code from email.
+    sessionStorage.setItem("pending-verify-email", form.email.trim().toLowerCase());
+    markSubmitted();
+    step.value = 3;
+    setTimeout(() => router.push({ name: "verifyPending" }), 600);
   } catch (e) {
     console.error(e);
     // Show inline error instead of native alert(); preserve the form.

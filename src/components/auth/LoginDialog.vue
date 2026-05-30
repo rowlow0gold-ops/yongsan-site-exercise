@@ -191,6 +191,14 @@ async function passwordLogin() {
     emit("success");
   } catch (e) {
     console.error(e);
+    // Credentials correct but email unverified → backend has already sent a
+    // fresh code; route the user to /verify-pending with the email prefilled.
+    if (e?.response?.status === 403 && e?.response?.data?.code === "EMAIL_NOT_VERIFIED") {
+      open("이메일 인증이 필요합니다. 새 인증 코드를 보냈습니다.", "warning");
+      model.value = false;
+      router.push({ name: "verifyPending", query: { email: email.value.trim() } });
+      return;
+    }
     error.value =
       e?.response?.data?.message ||
       (e?.response?.status === 401
