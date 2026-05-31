@@ -81,12 +81,22 @@
 
       <div class="text-center mt-2 text-body-2">
         계정이 없으신가요?
-        <span class="text-primary cursor-pointer" @click="goSignup">회원가입</span>
+        <a
+          href="#"
+          role="button"
+          class="text-primary link-tap"
+          @click.prevent="goSignup"
+          @touchend.prevent="goSignup"
+        >회원가입</a>
       </div>
       <div class="text-center mt-1 text-body-2">
-        <span class="text-primary cursor-pointer" @click="goForgotPassword">
-          비밀번호를 잊으셨나요?
-        </span>
+        <a
+          href="#"
+          role="button"
+          class="text-primary link-tap"
+          @click.prevent="goForgotPassword"
+          @touchend.prevent="goForgotPassword"
+        >비밀번호를 잊으셨나요?</a>
       </div>
     </v-card>
   </v-dialog>
@@ -321,4 +331,16 @@ onUnmounted(unmountTurnstile);
   color: #374151;
   margin-bottom: 6px;
 }
+/* Mobile tap target: <span @click> wasn't reliably hitting on iOS/Android
+ * inside a v-dialog. <a role=button> + a real tap surface fixes it. */
+.link-tap {
+  display: inline-block;
+  padding: 8px 4px;
+  text-decoration: none;
+  cursor: pointer;
+  touch-action: manipulation;          /* kill 300ms tap delay + double-tap zoom */
+  -webkit-tap-highlight-color: rgba(25,118,210,0.18);
+}
+.link-tap:hover,
+.link-tap:active { text-decoration: underline; }
 </style>
