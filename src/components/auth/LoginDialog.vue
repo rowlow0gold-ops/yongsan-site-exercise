@@ -290,7 +290,15 @@ async function passkeyLogin() {
 }
 
 function closeDialog()  { model.value = false; }
-function goSignup()     { model.value = false; emit("go-signup"); }
+function goSignup() {
+  // Navigate directly so the dialog works regardless of which parent
+  // hosts it. We still emit the event for backward compat (UtilBar
+  // listens for it) but don't depend on it — Nav.vue's mobile mount
+  // didn't have the listener wired, which was the actual bug.
+  model.value = false;
+  emit("go-signup");
+  router.push({ name: "signup" });
+}
 function goForgotPassword() {
   model.value = false;
   router.push({ name: "forgotPassword" });
